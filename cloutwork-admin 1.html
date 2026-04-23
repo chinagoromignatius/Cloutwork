@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CloutWork — Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = 'https://nyvljdxeeakatnnqiwjx.supabase.co'
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55dmxqZHhlZWFrYXRubnFpd2p4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NDMxODcsImV4cCI6MjA5MjUxOTE4N30.yRGcDuCXjf7wkrJSz1rPPwH3wQnRncjPfsf3yqHui_Q'
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+</script>
+<style>
+  :root {
+    --black: #0a0a0a;
+    --white: #f5f2ee;
+    --red: #ff2d55;
+    --cyan: #00f2ea;
+    --green: #4ade80;
+    --amber: #f59e0b;
+    --blue: #3b82f6;
+    --purple: #8b5cf6;
+    --card: #111118;
+    --card2: #16161e;
+    --input: #1c1c26;
+    --muted: #666;
+    --border: rgba(255,255,255,0.07);
+    --sidebar-w: 240px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    display: flex;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--card);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 50;
+    overflow-y: auto;
+  }
+
+  .sidebar-logo {
+    padding: 22px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .logo-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--red); box-shadow: 0 0 10px var(--red);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(.8)} }
+
+  .admin-badge {
+    margin: 6px 12px 0;
+    padding: 5px 10px; border-radius: 6px;
+    background: rgba(255,45,85,0.12);
+    border: 1px solid rgba(255,45,85,0.25);
+    font-size: 10px; font-weight: 700; color: var(--red);
+    text-transform: uppercase; letter-spacing: 0.12em; text-align: center;
+  }
+
+  /* REVENUE MINI */
+  .sidebar-revenue {
+    margin: 12px 12px 4px;
+    background: linear-gradient(135deg, rgba(255,45,85,0.1), rgba(139,92,246,0.08));
+    border: 1px solid rgba(255,45,85,0.15);
+    border-radius: 14px; padding: 14px;
+  }
+
+  .sr-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 3px; }
+  .sr-amount { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.8px; color: var(--green); }
+  .sr-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .sidebar-nav { flex: 1; padding: 6px 8px; }
+
+  .nav-section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: #2a2a2a; padding: 10px 12px 5px;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 8px;
+    color: var(--muted); font-size: 13px; cursor: pointer;
+    transition: all 0.15s; margin-bottom: 2px;
+    border: none; background: none; width: 100%;
+    text-align: left; font-family: 'DM Sans', sans-serif;
+  }
+
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--white); }
+  .nav-item.active { background: rgba(255,45,85,0.1); color: var(--white); border: 1px solid rgba(255,45,85,0.15); }
+  .nav-icon { font-size: 14px; width: 20px; text-align: center; flex-shrink: 0; }
+
+  .nav-badge {
+    margin-left: auto; background: var(--red); color: white;
+    font-size: 10px; font-weight: 700; padding: 2px 6px;
+    border-radius: 8px; min-width: 18px; text-align: center;
+  }
+
+  .nb-amber { background: var(--amber); }
+  .nb-blue { background: var(--blue); }
+
+  .sidebar-footer {
+    padding: 14px 12px; border-top: 1px solid var(--border); flex-shrink: 0;
+  }
+
+  .admin-user { display: flex; align-items: center; gap: 10px; }
+
+  .admin-avatar {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--red), var(--purple));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 12px; flex-shrink: 0;
+  }
+
+  .admin-info { flex: 1; min-width: 0; }
+  .admin-name { font-size: 12px; font-weight: 500; }
+  .admin-role { font-size: 10px; color: var(--red); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* ── MAIN ── */
+  .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+  .topbar {
+    height: 58px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px; position: sticky; top: 0;
+    background: rgba(10,10,10,0.92); backdrop-filter: blur(16px); z-index: 40;
+  }
+
+  .page-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+  .search-box {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--card2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 14px; width: 200px;
+    transition: border-color 0.2s;
+  }
+
+  .search-box:focus-within { border-color: rgba(255,45,85,0.3); }
+  .search-box input { background: none; border: none; outline: none; color: var(--white); font-family: 'DM Sans', sans-serif; font-size: 13px; width: 100%; }
+  .search-box input::placeholder { color: #444; }
+
+  .topbar-btn {
+    padding: 8px 14px; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--card2); color: var(--muted); font-family: 'DM Sans', sans-serif;
+    font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .topbar-btn:hover { color: var(--white); border-color: rgba(255,255,255,0.15); }
+  .topbar-btn.red { background: var(--red); border-color: var(--red); color: white; box-shadow: 0 4px 14px rgba(255,45,85,0.25); }
+
+  .content { padding: 22px 28px; flex: 1; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── STATS ── */
+  .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 22px; }
+
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 18px; transition: border-color 0.2s;
+  }
+
+  .stat-card:hover { border-color: rgba(255,255,255,0.1); }
+  .stat-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+
+  .stat-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .si-green { background: rgba(74,222,128,0.1); }
+  .si-blue { background: rgba(59,130,246,0.1); }
+  .si-amber { background: rgba(245,158,11,0.1); }
+  .si-red { background: rgba(255,45,85,0.1); }
+  .si-purple { background: rgba(139,92,246,0.1); }
+
+  .stat-change { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 5px; }
+  .sc-up { background: rgba(74,222,128,0.1); color: var(--green); }
+  .sc-down { background: rgba(255,45,85,0.1); color: var(--red); }
+  .sc-blue { background: rgba(59,130,246,0.1); color: var(--blue); }
+
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 3px; }
+  .stat-label { font-size: 11px; color: var(--muted); }
+
+  /* ── SECTION ── */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .section-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+
+  .btn-sm {
+    padding: 6px 13px; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--card2); color: var(--muted); font-size: 12px;
+    font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+  }
+
+  .btn-sm:hover { color: var(--white); border-color: rgba(255,255,255,0.15); }
+  .btn-sm.red { background: rgba(255,45,85,0.1); border-color: rgba(255,45,85,0.2); color: var(--red); }
+  .btn-sm.green { background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.2); color: var(--green); }
+  .btn-sm.blue { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.2); color: var(--blue); }
+
+  /* ── TABLE ── */
+  .table-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 20px; }
+
+  .table-header {
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .filter-pills { display: flex; gap: 6px; }
+
+  .pill {
+    padding: 5px 12px; border-radius: 16px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); font-size: 11px;
+    font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+  }
+
+  .pill:hover { color: var(--white); }
+  .pill.active { background: rgba(255,45,85,0.1); border-color: rgba(255,45,85,0.25); color: var(--white); }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  th {
+    padding: 10px 16px; text-align: left; font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+    border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.01);
+    white-space: nowrap;
+  }
+
+  td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.015); }
+
+  .user-cell { display: flex; align-items: center; gap: 10px; }
+
+  .mini-avatar {
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11px;
+  }
+
+  .av-red { background: linear-gradient(135deg, rgba(255,45,85,0.3), rgba(255,45,85,0.1)); }
+  .av-blue { background: linear-gradient(135deg, rgba(59,130,246,0.3), rgba(59,130,246,0.1)); }
+  .av-green { background: linear-gradient(135deg, rgba(74,222,128,0.3), rgba(74,222,128,0.1)); }
+  .av-purple { background: linear-gradient(135deg, rgba(139,92,246,0.3), rgba(139,92,246,0.1)); }
+  .av-amber { background: linear-gradient(135deg, rgba(245,158,11,0.3), rgba(245,158,11,0.1)); }
+
+  .user-name-cell { font-weight: 500; font-size: 13px; }
+  .user-sub-cell { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  .badge {
+    display: inline-block; padding: 3px 9px; border-radius: 5px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+
+  .b-active { background: rgba(74,222,128,0.1); color: var(--green); border: 1px solid rgba(74,222,128,0.2); }
+  .b-suspended { background: rgba(255,45,85,0.1); color: var(--red); border: 1px solid rgba(255,45,85,0.2); }
+  .b-pending { background: rgba(245,158,11,0.1); color: var(--amber); border: 1px solid rgba(245,158,11,0.2); }
+  .b-verified { background: rgba(59,130,246,0.1); color: var(--blue); border: 1px solid rgba(59,130,246,0.2); }
+  .b-live { background: rgba(74,222,128,0.1); color: var(--green); }
+  .b-paused { background: rgba(255,255,255,0.05); color: var(--muted); }
+  .b-completed { background: rgba(59,130,246,0.1); color: var(--blue); }
+
+  .action-btns { display: flex; gap: 6px; }
+
+  .act-btn {
+    padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border); background: var(--input);
+    color: var(--muted); font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+  }
+
+  .act-btn:hover { color: var(--white); border-color: rgba(255,255,255,0.2); }
+  .act-btn.danger { border-color: rgba(255,45,85,0.2); color: var(--red); background: rgba(255,45,85,0.06); }
+  .act-btn.danger:hover { background: rgba(255,45,85,0.15); }
+  .act-btn.success { border-color: rgba(74,222,128,0.2); color: var(--green); background: rgba(74,222,128,0.06); }
+  .act-btn.success:hover { background: rgba(74,222,128,0.15); }
+
+  /* ── WITHDRAWALS ── */
+  .withdrawal-row { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  .withdrawal-row:last-child { border-bottom: none; }
+  .withdrawal-row:hover { background: rgba(255,255,255,0.015); }
+
+  .wr-avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+  .wr-info { flex: 1; min-width: 0; }
+  .wr-name { font-size: 13px; font-weight: 500; }
+  .wr-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .wr-amount { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; color: var(--white); min-width: 90px; text-align: right; }
+  .wr-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+  .btn-pay {
+    padding: 8px 16px; border-radius: 7px;
+    background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.25);
+    color: var(--green); font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s;
+  }
+
+  .btn-pay:hover { background: rgba(74,222,128,0.2); transform: translateY(-1px); }
+  .btn-pay:disabled { opacity: 0.4; pointer-events: none; }
+
+  .paid-label { font-size: 11px; font-weight: 600; color: var(--green); padding: 5px 10px; background: rgba(74,222,128,0.08); border-radius: 6px; }
+
+  /* ── REVENUE CHART ── */
+  .revenue-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 20px; }
+
+  .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+  .cc-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+  .cc-sub { font-size: 12px; color: var(--muted); margin-bottom: 18px; }
+
+  .bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 100px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+  .bar-fill { width: 100%; border-radius: 4px 4px 0 0; min-height: 3px; transition: height 0.5s; }
+  .bf-green { background: linear-gradient(180deg, rgba(74,222,128,0.8), rgba(74,222,128,0.2)); }
+  .bf-today { background: linear-gradient(180deg, var(--green), rgba(74,222,128,0.4)); box-shadow: 0 0 10px rgba(74,222,128,0.3); }
+  .bar-label { font-size: 9px; color: var(--muted); }
+
+  .platform-stats { display: flex; flex-direction: column; gap: 10px; }
+
+  .ps-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+
+  .ps-row:last-child { border-bottom: none; }
+  .ps-label { color: var(--muted); font-size: 12px; }
+  .ps-value { font-family: 'Syne', sans-serif; font-weight: 700; }
+
+  /* ── SETTINGS ── */
+  .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  .settings-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+  .sc-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .sc-sub { font-size: 12px; color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
+
+  .field { margin-bottom: 16px; }
+  .field-label { font-size: 12px; font-weight: 500; color: rgba(245,242,238,0.6); margin-bottom: 7px; }
+
+  .field-input {
+    width: 100%; background: var(--input); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 13px; color: var(--white);
+    font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .field-input:focus { border-color: rgba(255,45,85,0.4); }
+
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .toggle-row:last-of-type { border-bottom: none; }
+  .toggle-info {}
+  .toggle-title { font-size: 13px; font-weight: 500; }
+  .toggle-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .toggle {
+    width: 40px; height: 22px; border-radius: 11px;
+    background: var(--input); border: 1px solid var(--border);
+    cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0;
+  }
+
+  .toggle.on { background: var(--red); border-color: var(--red); }
+  .toggle::after {
+    content: ''; position: absolute;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: white; top: 2px; left: 2px; transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+
+  .toggle.on::after { transform: translateX(18px); }
+
+  .btn-save {
+    padding: 10px 20px; border-radius: 8px; background: var(--red);
+    border: none; color: white; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    box-shadow: 0 4px 14px rgba(255,45,85,0.2);
+  }
+
+  .btn-save:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(255,45,85,0.3); }
+
+  /* PAYSTACK WARNING */
+  .paystack-notice {
+    background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.15);
+    border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;
+    font-size: 12px; color: rgba(59,130,246,0.9); line-height: 1.7;
+  }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(8px); z-index: 200; display: none;
+    align-items: center; justify-content: center; padding: 24px;
+  }
+
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 18px; width: 100%; max-width: 480px;
+    max-height: 88vh; overflow-y: auto; position: relative;
+    animation: modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+
+  @keyframes modalIn { from{transform:scale(0.9);opacity:0} to{transform:scale(1);opacity:1} }
+
+  .modal-close {
+    position: absolute; top: 14px; right: 14px; width: 30px; height: 30px;
+    border-radius: 50%; border: 1px solid var(--border); background: var(--card2);
+    color: var(--muted); cursor: pointer; display: flex; align-items: center;
+    justify-content: center; font-size: 15px; transition: all 0.2s;
+  }
+
+  .modal-close:hover { color: var(--white); }
+  .modal-head { padding: 22px 22px 0; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; margin-bottom: 3px; }
+  .modal-sub { font-size: 12px; color: var(--muted); }
+  .modal-body { padding: 18px 22px; }
+
+  .detail-row { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .detail-row:last-child { border-bottom: none; }
+  .dr-label { color: var(--muted); }
+  .dr-val { font-weight: 500; }
+
+  .modal-btn-row { display: flex; gap: 10px; margin-top: 16px; }
+
+  .modal-btn {
+    flex: 1; padding: 12px; border-radius: 8px; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: 1px solid;
+  }
+
+  .mb-danger { background: rgba(255,45,85,0.1); border-color: rgba(255,45,85,0.25); color: var(--red); }
+  .mb-danger:hover { background: rgba(255,45,85,0.2); }
+  .mb-success { background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.25); color: var(--green); }
+  .mb-success:hover { background: rgba(74,222,128,0.2); }
+  .mb-neutral { background: var(--input); border-color: var(--border); color: var(--muted); }
+  .mb-neutral:hover { color: var(--white); }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--card2); border-radius: 12px; padding: 13px 16px;
+    display: flex; align-items: center; gap: 11px; font-size: 13px;
+    z-index: 1000; transform: translateY(100px); opacity: 0;
+    transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4); min-width: 240px;
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .t-green { border: 1px solid rgba(74,222,128,0.25); }
+  .t-red { border: 1px solid rgba(255,45,85,0.25); }
+  .t-blue { border: 1px solid rgba(59,130,246,0.25); }
+  .t-amber { border: 1px solid rgba(245,158,11,0.25); }
+
+  .toast-title { font-weight: 600; color: var(--white); margin-bottom: 1px; }
+  .toast-sub { font-size: 11px; color: var(--muted); }
+
+  /* RESPONSIVE */
+  @media (max-width: 1200px) { .stats-row { grid-template-columns: repeat(3,1fr); } }
+  @media (max-width: 900px) { .revenue-grid { grid-template-columns: 1fr; } .settings-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; } .content { padding: 14px; } .stats-row { grid-template-columns: repeat(2,1fr); } }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-dot"></div>
+    CloutWork
+  </div>
+  <div class="admin-badge">⚡ Admin Panel</div>
+
+  <div class="sidebar-revenue">
+    <div class="sr-label">Platform revenue (this month)</div>
+    <div class="sr-amount">₦28,612</div>
+    <div class="sr-sub">From 190 completed tasks</div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Platform</div>
+    <button class="nav-item active" onclick="showPanel('overview', this)">
+      <span class="nav-icon">📊</span> Overview
+    </button>
+    <button class="nav-item" onclick="showPanel('workers', this)">
+      <span class="nav-icon">👥</span> Workers
+      <span class="nav-badge nb-blue">1,240</span>
+    </button>
+    <button class="nav-item" onclick="showPanel('employers', this)">
+      <span class="nav-icon">🏢</span> Employers
+      <span class="nav-badge nb-blue">87</span>
+    </button>
+    <button class="nav-item" onclick="showPanel('tasks', this)">
+      <span class="nav-icon">📋</span> All Tasks
+    </button>
+    <button class="nav-item" onclick="showPanel('withdrawals', this)">
+      <span class="nav-icon">💸</span> Withdrawals
+      <span class="nav-badge">12</span>
+    </button>
+
+    <div class="nav-section-label">Finance</div>
+    <button class="nav-item" onclick="showPanel('revenue', this)">
+      <span class="nav-icon">💰</span> Revenue
+    </button>
+    <button class="nav-item" onclick="showPanel('disputes', this)">
+      <span class="nav-icon">⚠️</span> Disputes
+      <span class="nav-badge nb-amber">3</span>
+    </button>
+
+    <div class="nav-section-label">System</div>
+    <button class="nav-item" onclick="showPanel('settings', this)">
+      <span class="nav-icon">⚙️</span> Settings
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="admin-user">
+      <div class="admin-avatar">AD</div>
+      <div class="admin-info">
+        <div class="admin-name">Admin</div>
+        <div class="admin-role">Super Admin</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <div class="page-title" id="page-title">Overview</div>
+    <div class="topbar-right">
+      <div class="search-box">
+        <span style="color:#444;font-size:13px;">🔍</span>
+        <input type="text" placeholder="Search users, tasks...">
+      </div>
+      <button class="topbar-btn">📥 Export CSV</button>
+      <button class="topbar-btn red" onclick="showPanel('withdrawals', document.querySelectorAll('.nav-item')[4])">
+        💸 12 pending payouts
+      </button>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- ══ OVERVIEW ══ -->
+    <div class="panel active" id="panel-overview">
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-top">
+            <div class="stat-icon si-green">💰</div>
+            <span class="stat-change sc-up">+₦4,200 today</span>
+          </div>
+          <div class="stat-value">₦28,612</div>
+          <div class="stat-label">Revenue this month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top">
+            <div class="stat-icon si-blue">👥</div>
+            <span class="stat-change sc-up">+24 today</span>
+          </div>
+          <div class="stat-value">1,240</div>
+          <div class="stat-label">Total workers</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top">
+            <div class="stat-icon si-purple">🏢</div>
+            <span class="stat-change sc-up">+3 this week</span>
+          </div>
+          <div class="stat-value">87</div>
+          <div class="stat-label">Total employers</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top">
+            <div class="stat-icon si-amber">📋</div>
+            <span class="stat-change sc-blue">190 done</span>
+          </div>
+          <div class="stat-value">24</div>
+          <div class="stat-label">Live task campaigns</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top">
+            <div class="stat-icon si-red">💸</div>
+            <span class="stat-change sc-down">12 pending</span>
+          </div>
+          <div class="stat-value">₦186,400</div>
+          <div class="stat-label">Total paid to workers</div>
+        </div>
+      </div>
+
+      <!-- REVENUE SNAPSHOT -->
+      <div class="revenue-grid">
+        <div class="chart-card">
+          <div class="cc-title">Revenue this week (₦)</div>
+          <div class="cc-sub">Your 15% platform fee per day</div>
+          <div class="bar-chart">
+            <div class="bar-col"><div class="bar-fill bf-green" style="height:38%"></div><div class="bar-label">Mon</div></div>
+            <div class="bar-col"><div class="bar-fill bf-green" style="height:62%"></div><div class="bar-label">Tue</div></div>
+            <div class="bar-col"><div class="bar-fill bf-green" style="height:45%"></div><div class="bar-label">Wed</div></div>
+            <div class="bar-col"><div class="bar-fill bf-green" style="height:78%"></div><div class="bar-label">Thu</div></div>
+            <div class="bar-col"><div class="bar-fill bf-green" style="height:55%"></div><div class="bar-label">Fri</div></div>
+            <div class="bar-col"><div class="bar-fill bf-green" style="height:90%"></div><div class="bar-label">Sat</div></div>
+            <div class="bar-col"><div class="bar-fill bf-today" style="height:48%"></div><div class="bar-label" style="color:var(--green)">Sun</div></div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="cc-title">Platform health</div>
+          <div class="cc-sub">Key metrics at a glance</div>
+          <div class="platform-stats">
+            <div class="ps-row"><span class="ps-label">Approval rate</span><span class="ps-value" style="color:var(--green)">94%</span></div>
+            <div class="ps-row"><span class="ps-label">Avg task pay</span><span class="ps-value">₦842</span></div>
+            <div class="ps-row"><span class="ps-label">Worker retention</span><span class="ps-value" style="color:var(--green)">78%</span></div>
+            <div class="ps-row"><span class="ps-label">Disputes open</span><span class="ps-value" style="color:var(--amber)">3</span></div>
+            <div class="ps-row"><span class="ps-label">Avg payout time</span><span class="ps-value">18 hrs</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RECENT SIGNUPS -->
+      <div class="section-header">
+        <div class="section-title">Recent signups</div>
+        <button class="btn-sm" onclick="showPanel('workers', document.querySelectorAll('.nav-item')[1])">View all →</button>
+      </div>
+
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Type</th>
+              <th>State</th>
+              <th>Joined</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="recent-signups">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ WORKERS ══ -->
+    <div class="panel" id="panel-workers">
+
+      <div class="section-header" style="margin-bottom:16px">
+        <div class="section-title">All Workers <span style="color:var(--muted);font-weight:400;font-size:13px;font-family:'DM Sans'">— 1,240 registered</span></div>
+        <div class="filter-pills">
+          <button class="pill active">All</button>
+          <button class="pill">Active</button>
+          <button class="pill">Suspended</button>
+          <button class="pill">Pending KYC</button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Worker</th>
+              <th>State</th>
+              <th>Tasks done</th>
+              <th>Success rate</th>
+              <th>Total earned</th>
+              <th>Balance</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="workers-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ EMPLOYERS ══ -->
+    <div class="panel" id="panel-employers">
+
+      <div class="section-header" style="margin-bottom:16px">
+        <div class="section-title">All Employers <span style="color:var(--muted);font-weight:400;font-size:13px;font-family:'DM Sans'">— 87 registered</span></div>
+        <div class="filter-pills">
+          <button class="pill active">All</button>
+          <button class="pill">Verified</button>
+          <button class="pill">Pending</button>
+          <button class="pill">Suspended</button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Business</th>
+              <th>Industry</th>
+              <th>Wallet</th>
+              <th>Campaigns</th>
+              <th>Total spent</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="employers-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ TASKS ══ -->
+    <div class="panel" id="panel-tasks">
+
+      <div class="section-header" style="margin-bottom:16px">
+        <div class="section-title">All Task Campaigns</div>
+        <div class="filter-pills">
+          <button class="pill active">All</button>
+          <button class="pill">Live</button>
+          <button class="pill">Paused</button>
+          <button class="pill">Completed</button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Campaign</th>
+              <th>Employer</th>
+              <th>Type</th>
+              <th>Pay/task</th>
+              <th>Progress</th>
+              <th>Total value</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tasks-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ WITHDRAWALS ══ -->
+    <div class="panel" id="panel-withdrawals">
+
+      <div class="section-header" style="margin-bottom:16px">
+        <div class="section-title">Pending Withdrawals <span style="color:var(--amber);font-weight:400;font-size:13px;font-family:'DM Sans'">— 12 waiting</span></div>
+        <button class="btn-sm green" onclick="payAllWithdrawals()">✓ Pay all via Paystack</button>
+      </div>
+
+      <div class="table-card" id="withdrawals-list">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- ══ REVENUE ══ -->
+    <div class="panel" id="panel-revenue">
+
+      <div class="stats-row" style="grid-template-columns: repeat(4,1fr)">
+        <div class="stat-card">
+          <div class="stat-top"><div class="stat-icon si-green">📈</div></div>
+          <div class="stat-value">₦28,612</div>
+          <div class="stat-label">This month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top"><div class="stat-icon si-blue">📅</div></div>
+          <div class="stat-value">₦4,200</div>
+          <div class="stat-label">Today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top"><div class="stat-icon si-purple">🏦</div></div>
+          <div class="stat-value">₦142,800</div>
+          <div class="stat-label">All time</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top"><div class="stat-icon si-amber">📊</div></div>
+          <div class="stat-value">15%</div>
+          <div class="stat-label">Platform fee rate</div>
+        </div>
+      </div>
+
+      <div class="revenue-grid">
+        <div class="chart-card">
+          <div class="cc-title">Monthly revenue (₦)</div>
+          <div class="cc-sub">Last 7 months platform fee income</div>
+          <div class="bar-chart" style="height:120px;">
+            <div class="bar-col"><div class="bar-fill bf-green" style="height:20%"></div><div class="bar-label">Oct</div></div>
+            <div class="bar-col"><div class="bar-fill bf-green" style="height:32%"></div><div class="bar-label">Nov</div></div>
+            <div class="bar-col"><div class="bar-fill bf-green" style="height:48%"></div><div class="bar-label">Dec</div></div>
+            <div class="bar-col"><div class="bar-fill bf-green" style="height:55%"></div><div class="bar-label">Jan</div></div>
+            <div class="bar-col"><div class="bar-fill bf-green" style="height:70%"></div><div class="bar-label">Feb</div></div>
+            <div class="bar-col"><div class="bar-fill bf-green" style="height:82%"></div><div class="bar-label">Mar</div></div>
+            <div class="bar-col"><div class="bar-fill bf-today" style="height:95%"></div><div class="bar-label" style="color:var(--green)">Apr</div></div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="cc-title">Revenue breakdown</div>
+          <div class="cc-sub">By task category</div>
+          <div class="platform-stats">
+            <div class="ps-row"><span class="ps-label">UGC Video fees</span><span class="ps-value" style="color:var(--cyan)">₦14,400</span></div>
+            <div class="ps-row"><span class="ps-label">Watch & Comment</span><span class="ps-value">₦6,800</span></div>
+            <div class="ps-row"><span class="ps-label">Duet / Stitch</span><span class="ps-value">₦4,050</span></div>
+            <div class="ps-row"><span class="ps-label">Follow & Engage</span><span class="ps-value">₦2,162</span></div>
+            <div class="ps-row"><span class="ps-label">Other</span><span class="ps-value">₦1,200</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ DISPUTES ══ -->
+    <div class="panel" id="panel-disputes">
+      <div class="section-header" style="margin-bottom:16px">
+        <div class="section-title">Open Disputes <span style="color:var(--amber);font-weight:400;font-size:13px;font-family:'DM Sans'">— 3 open</span></div>
+      </div>
+
+      <div class="table-card">
+        <div class="withdrawal-row" style="flex-wrap:wrap;gap:10px;">
+          <div class="wr-avatar av-red">SC</div>
+          <div class="wr-info">
+            <div class="wr-name">@sade_creates vs GlowUp Beauty</div>
+            <div class="wr-meta">Worker claims proof was valid. Employer rejected without reason. Task: UGC Product Review · ₦3,200</div>
+          </div>
+          <div class="wr-actions" style="flex-wrap:wrap;gap:6px;">
+            <button class="btn-sm green" onclick="resolveDispute('pay', '@sade_creates', '₦3,200')">Pay worker</button>
+            <button class="btn-sm red" onclick="resolveDispute('refund', 'GlowUp Beauty', '₦3,200')">Refund employer</button>
+            <button class="btn-sm" onclick="alert('Message thread coming in production.')">💬 View thread</button>
+          </div>
+        </div>
+        <div class="withdrawal-row" style="flex-wrap:wrap;gap:10px;">
+          <div class="wr-avatar av-blue">TL</div>
+          <div class="wr-info">
+            <div class="wr-name">@tunde_lagos vs StyleHouse NG</div>
+            <div class="wr-meta">Worker submitted wrong screenshot. Employer wants rejection. Task: Watch & Comment · ₦160</div>
+          </div>
+          <div class="wr-actions" style="flex-wrap:wrap;gap:6px;">
+            <button class="btn-sm green" onclick="resolveDispute('pay', '@tunde_lagos', '₦160')">Pay worker</button>
+            <button class="btn-sm red" onclick="resolveDispute('refund', 'StyleHouse NG', '₦160')">Refund employer</button>
+            <button class="btn-sm" onclick="alert('Message thread coming in production.')">💬 View thread</button>
+          </div>
+        </div>
+        <div class="withdrawal-row" style="flex-wrap:wrap;gap:10px;border-bottom:none;">
+          <div class="wr-avatar av-purple">AA</div>
+          <div class="wr-info">
+            <div class="wr-name">@amaka_abj vs FoodieNG</div>
+            <div class="wr-meta">Worker says account was wrongly suspended mid-task. Platform review needed. Task: Follow & Engage · ₦240</div>
+          </div>
+          <div class="wr-actions" style="flex-wrap:wrap;gap:6px;">
+            <button class="btn-sm green" onclick="resolveDispute('pay', '@amaka_abj', '₦240')">Pay worker</button>
+            <button class="btn-sm red" onclick="resolveDispute('refund', 'FoodieNG', '₦240')">Refund employer</button>
+            <button class="btn-sm" onclick="alert('Message thread coming in production.')">💬 View thread</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SETTINGS ══ -->
+    <div class="panel" id="panel-settings">
+
+      <div class="settings-grid">
+
+        <div class="settings-card">
+          <div class="sc-title">Platform fees</div>
+          <div class="sc-sub">Control what percentage you charge employers per transaction.</div>
+          <div class="field">
+            <div class="field-label">Platform fee (charged to employer)</div>
+            <input type="number" class="field-input" value="15" id="platform-fee" min="5" max="30">
+          </div>
+          <div class="field">
+            <div class="field-label">Minimum task pay (₦)</div>
+            <input type="number" class="field-input" value="50">
+          </div>
+          <div class="field">
+            <div class="field-label">Minimum withdrawal amount (₦)</div>
+            <input type="number" class="field-input" value="500">
+          </div>
+          <button class="btn-save" onclick="showToast('Fees updated ✓', 'New fee structure is now live.', '✅', 't-green')">Save fee settings</button>
+        </div>
+
+        <div class="settings-card">
+          <div class="sc-title">Paystack integration</div>
+          <div class="sc-sub">Connect Paystack to handle employer top-ups and worker bank payouts automatically.</div>
+          <div class="paystack-notice">
+            🔑 To activate payments, add your Paystack Secret Key and Public Key below. Get them at <strong>dashboard.paystack.com</strong> → Settings → API Keys.
+          </div>
+          <div class="field">
+            <div class="field-label">Paystack Public Key</div>
+            <input type="text" class="field-input" placeholder="pk_live_xxxxxxxxxxxxxxxxxx">
+          </div>
+          <div class="field">
+            <div class="field-label">Paystack Secret Key</div>
+            <input type="password" class="field-input" placeholder="sk_live_xxxxxxxxxxxxxxxxxx">
+          </div>
+          <button class="btn-save" onclick="showToast('Paystack connected ✓', 'Payments are now live.', '💳', 't-blue')">Connect Paystack</button>
+        </div>
+
+        <div class="settings-card">
+          <div class="sc-title">Platform controls</div>
+          <div class="sc-sub">Toggle features on and off across the platform.</div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">New worker signups</div>
+              <div class="toggle-sub">Allow new workers to register</div>
+            </div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">New employer signups</div>
+              <div class="toggle-sub">Allow new brands to register</div>
+            </div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">Task submissions</div>
+              <div class="toggle-sub">Workers can submit task proofs</div>
+            </div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">Withdrawals</div>
+              <div class="toggle-sub">Workers can request payouts</div>
+            </div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+
+          <div class="toggle-row" style="border-bottom:none">
+            <div class="toggle-info">
+              <div class="toggle-title">Maintenance mode</div>
+              <div class="toggle-sub">Take the platform offline temporarily</div>
+            </div>
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="sc-title">Email & notifications</div>
+          <div class="sc-sub">Configure automated emails sent to users.</div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">Welcome email on signup</div>
+              <div class="toggle-sub">Sent when a new user registers</div>
+            </div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">Task approval notification</div>
+              <div class="toggle-sub">Email worker when task is approved</div>
+            </div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">Withdrawal confirmation</div>
+              <div class="toggle-sub">Email worker when payout is sent</div>
+            </div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+
+          <div class="toggle-row" style="border-bottom:none">
+            <div class="toggle-info">
+              <div class="toggle-title">Low wallet alert (employers)</div>
+              <div class="toggle-sub">Notify employer when balance is below ₦5,000</div>
+            </div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- USER DETAIL MODAL -->
+<div class="modal-overlay" id="user-modal" onclick="if(event.target===this)closeModal('user-modal')">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('user-modal')">✕</button>
+    <div class="modal-head">
+      <div class="modal-title" id="um-name">User Details</div>
+      <div class="modal-sub" id="um-sub">Worker · Active</div>
+    </div>
+    <div class="modal-body">
+      <div id="um-details"></div>
+      <div class="modal-btn-row" id="um-actions"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span id="toast-icon" style="font-size:18px;">✅</span>
+  <div>
+    <div class="toast-title" id="toast-title">Done</div>
+    <div class="toast-sub" id="toast-sub">Action completed.</div>
+  </div>
+</div>
+
+<script>
+  // ── DATA ──
+  const workers = [
+    { id:1, name:'Chidi Okafor', handle:'@chidi_tiktok', initials:'CO', av:'av-red', state:'Rivers', tasks:47, rate:'96%', earned:'₦18,450', balance:'₦4,750', status:'active' },
+    { id:2, name:'Sade Adeyemi', handle:'@sade_creates', initials:'SA', av:'av-blue', state:'Lagos', tasks:142, rate:'97%', earned:'₦64,200', balance:'₦12,800', status:'active' },
+    { id:3, name:'Emeka Obi', handle:'@emeka_ph', initials:'EO', av:'av-green', state:'Anambra', tasks:88, rate:'91%', earned:'₦32,100', balance:'₦2,400', status:'active' },
+    { id:4, name:'Amaka Nwosu', handle:'@amaka_abj', initials:'AN', av:'av-purple', state:'FCT — Abuja', tasks:23, rate:'78%', earned:'₦8,200', balance:'₦1,100', status:'pending' },
+    { id:5, name:'Bisi Afolabi', handle:'@bisi_tt', initials:'BA', av:'av-amber', state:'Oyo', tasks:0, rate:'—', earned:'₦0', balance:'₦0', status:'active' },
+    { id:6, name:'Fake Worker', handle:'@spammer99', initials:'FW', av:'av-red', state:'Lagos', tasks:12, rate:'42%', earned:'₦1,200', balance:'₦400', status:'suspended' },
+  ];
+
+  const employers = [
+    { id:1, name:'GlowUp Beauty', handle:'@glowupbeautyng', initials:'GB', av:'av-blue', industry:'Beauty & Skincare', wallet:'₦42,500', campaigns:4, spent:'₦186,400', status:'verified' },
+    { id:2, name:'StyleHouse NG', handle:'@stylehouseng', initials:'SH', av:'av-purple', industry:'Fashion', wallet:'₦15,200', campaigns:2, spent:'₦48,000', status:'verified' },
+    { id:3, name:'FoodieNG', handle:'@foodieng', initials:'FN', av:'av-green', industry:'Food & Drink', wallet:'₦8,600', campaigns:3, spent:'₦24,500', status:'verified' },
+    { id:4, name:'TechGadgetsNG', handle:'@techgadgetsng', initials:'TG', av:'av-amber', industry:'Technology', wallet:'₦2,400', campaigns:1, spent:'₦12,000', status:'pending' },
+    { id:5, name:'Naija Drip', handle:'@naijadrip', initials:'ND', av:'av-red', industry:'Fashion', wallet:'₦0', campaigns:0, spent:'₦0', status:'pending' },
+  ];
+
+  const allTasks = [
+    { id:1, title:'UGC Product Review — Glow Serum', employer:'GlowUp Beauty', type:'🎬 UGC', pay:'₦3,200', progress:'38/50', value:'₦184,000', status:'live' },
+    { id:2, title:'Watch & Comment — New Launch', employer:'GlowUp Beauty', type:'👀 Watch', pay:'₦160', progress:'847/1000', value:'₦160,000', status:'live' },
+    { id:3, title:'Duet Challenge', employer:'Naija Drip', type:'🔁 Duet', pay:'₦1,500', progress:'18/25', value:'₦37,500', status:'live' },
+    { id:4, title:'Follow & Engage Campaign', employer:'FoodieNG', type:'➕ Follow', pay:'₦240', progress:'1102/1500', value:'₦360,000', status:'live' },
+    { id:5, title:'Comment Review — Moisturiser', employer:'GlowUp Beauty', type:'⭐ Review', pay:'₦480', progress:'0/400', value:'₦192,000', status:'paused' },
+    { id:6, title:'Fashion Haul UGC', employer:'StyleHouse NG', type:'🎬 UGC', pay:'₦2,800', progress:'50/50', value:'₦140,000', status:'completed' },
+  ];
+
+  const withdrawals = [
+    { id:1, name:'Sade Adeyemi', handle:'@sade_creates', initials:'SA', av:'av-blue', bank:'GTBank ••••7842', amount:'₦12,800', time:'2 hrs ago', status:'pending' },
+    { id:2, name:'Chidi Okafor', handle:'@chidi_tiktok', initials:'CO', av:'av-red', bank:'Access Bank ••••3210', amount:'₦4,750', time:'3 hrs ago', status:'pending' },
+    { id:3, name:'Emeka Obi', handle:'@emeka_ph', initials:'EO', av:'av-green', bank:'Kuda Bank ••••5521', amount:'₦2,400', time:'5 hrs ago', status:'pending' },
+    { id:4, name:'Yemi Lagos', handle:'@yemi_lag', initials:'YL', av:'av-purple', bank:'OPay ••••8871', amount:'₦6,500', time:'6 hrs ago', status:'pending' },
+    { id:5, name:'Kemi Creates', handle:'@kemi_creates', initials:'KC', av:'av-amber', bank:'Zenith Bank ••••4491', amount:'₦3,200', time:'8 hrs ago', status:'pending' },
+  ];
+
+  // ── RENDER WORKERS TABLE ──
+  function renderWorkers() {
+    document.getElementById('workers-table').innerHTML = workers.map(w => `
+      <tr>
+        <td>
+          <div class="user-cell">
+            <div class="mini-avatar ${w.av}">${w.initials}</div>
+            <div>
+              <div class="user-name-cell">${w.name}</div>
+              <div class="user-sub-cell">${w.handle}</div>
+            </div>
+          </div>
+        </td>
+        <td style="color:var(--muted);font-size:12px">${w.state}</td>
+        <td><span style="font-family:'Syne',sans-serif;font-weight:700">${w.tasks}</span></td>
+        <td style="color:${w.rate==='—'?'var(--muted)':parseInt(w.rate)>=90?'var(--green)':parseInt(w.rate)>=75?'var(--amber)':'var(--red)'}">${w.rate}</td>
+        <td style="font-family:'Syne',sans-serif;font-weight:600">${w.earned}</td>
+        <td style="font-family:'Syne',sans-serif;font-weight:600;color:var(--green)">${w.balance}</td>
+        <td><span class="badge ${w.status==='active'?'b-active':w.status==='suspended'?'b-suspended':'b-pending'}">${w.status}</span></td>
+        <td>
+          <div class="action-btns">
+            <button class="act-btn" onclick="viewUser(${w.id},'worker')">View</button>
+            ${w.status==='suspended'
+              ? `<button class="act-btn success" onclick="unsuspendUser(${w.id},'worker')">Unsuspend</button>`
+              : `<button class="act-btn danger" onclick="suspendUser(${w.id},'worker')">Suspend</button>`}
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // ── RENDER EMPLOYERS TABLE ──
+  function renderEmployers() {
+    document.getElementById('employers-table').innerHTML = employers.map(e => `
+      <tr>
+        <td>
+          <div class="user-cell">
+            <div class="mini-avatar ${e.av}" style="border-radius:8px">${e.initials}</div>
+            <div>
+              <div class="user-name-cell">${e.name}</div>
+              <div class="user-sub-cell">${e.handle}</div>
+            </div>
+          </div>
+        </td>
+        <td style="color:var(--muted);font-size:12px">${e.industry}</td>
+        <td style="font-family:'Syne',sans-serif;font-weight:600;color:${parseInt(e.wallet.replace(/[₦,]/g,''))>0?'var(--white)':'var(--muted)'}">${e.wallet}</td>
+        <td style="font-family:'Syne',sans-serif;font-weight:700">${e.campaigns}</td>
+        <td style="font-family:'Syne',sans-serif;font-weight:600">${e.spent}</td>
+        <td><span class="badge ${e.status==='verified'?'b-verified':e.status==='suspended'?'b-suspended':'b-pending'}">${e.status}</span></td>
+        <td>
+          <div class="action-btns">
+            <button class="act-btn" onclick="viewUser(${e.id},'employer')">View</button>
+            ${e.status==='pending'
+              ? `<button class="act-btn success" onclick="verifyEmployer(${e.id})">Verify</button>`
+              : `<button class="act-btn danger" onclick="suspendUser(${e.id},'employer')">Suspend</button>`}
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // ── RENDER TASKS TABLE ──
+  function renderTasks() {
+    document.getElementById('tasks-table').innerHTML = allTasks.map(t => `
+      <tr>
+        <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500">${t.title}</td>
+        <td style="color:var(--muted);font-size:12px">${t.employer}</td>
+        <td style="font-size:12px">${t.type}</td>
+        <td style="font-family:'Syne',sans-serif;font-weight:700;color:var(--green)">${t.pay}</td>
+        <td>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${t.progress}</div>
+          <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;width:80px">
+            <div style="height:100%;border-radius:2px;background:var(--blue);width:${Math.round(parseInt(t.progress)/parseInt(t.progress.split('/')[1])*100)}%"></div>
+          </div>
+        </td>
+        <td style="font-family:'Syne',sans-serif;font-weight:600">${t.value}</td>
+        <td><span class="badge ${t.status==='live'?'b-live':t.status==='paused'?'b-paused':'b-completed'}">${t.status}</span></td>
+        <td>
+          <div class="action-btns">
+            ${t.status==='live'
+              ? `<button class="act-btn" onclick="showToast('Campaign paused', '${t.title} is now paused.', '⏸', 't-amber')">Pause</button>`
+              : t.status==='paused'
+              ? `<button class="act-btn success" onclick="showToast('Campaign resumed', '${t.title} is now live.', '▶️', 't-green')">Resume</button>`
+              : ''}
+            <button class="act-btn danger" onclick="showToast('Campaign removed', 'Task removed from platform.', '🗑', 't-red')">Remove</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // ── RENDER WITHDRAWALS ──
+  function renderWithdrawals() {
+    const list = document.getElementById('withdrawals-list');
+    list.innerHTML = withdrawals.map(w => `
+      <div class="withdrawal-row" id="wd-${w.id}">
+        <div class="wr-avatar ${w.av}">${w.initials}</div>
+        <div class="wr-info">
+          <div class="wr-name">${w.name} <span style="color:var(--muted);font-weight:400;font-size:11px">— ${w.handle}</span></div>
+          <div class="wr-meta">${w.bank} · Requested ${w.time}</div>
+        </div>
+        <div class="wr-amount">${w.amount}</div>
+        <div class="wr-actions" id="wd-actions-${w.id}">
+          <button class="btn-pay" onclick="payWorker(${w.id})">✓ Pay now</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── RENDER RECENT SIGNUPS ──
+  function renderRecentSignups() {
+    const recent = [...workers].slice(0, 5);
+    document.getElementById('recent-signups').innerHTML = recent.map(u => `
+      <tr>
+        <td>
+          <div class="user-cell">
+            <div class="mini-avatar ${u.av}">${u.initials}</div>
+            <div>
+              <div class="user-name-cell">${u.name}</div>
+              <div class="user-sub-cell">${u.handle}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="badge b-active">Worker</span></td>
+        <td style="color:var(--muted);font-size:12px">${u.state}</td>
+        <td style="color:var(--muted);font-size:12px">${['2 hrs ago','4 hrs ago','Yesterday','2 days ago','3 days ago'][workers.indexOf(u)]}</td>
+        <td><span class="badge ${u.status==='active'?'b-active':u.status==='suspended'?'b-suspended':'b-pending'}">${u.status}</span></td>
+        <td>
+          <div class="action-btns">
+            <button class="act-btn" onclick="viewUser(${u.id},'worker')">View</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // Initialise all tables on load
+  renderWorkers();
+  renderEmployers();
+  renderTasks();
+  renderWithdrawals();
+  renderRecentSignups();
+
+  // ── ACTIONS ──
+  function viewUser(id, type) {
+    const user = type === 'worker' ? workers.find(w=>w.id===id) : employers.find(e=>e.id===id);
+    if (!user) return;
+
+    document.getElementById('um-name').textContent = user.name;
+    document.getElementById('um-sub').textContent = (type === 'worker' ? 'Worker' : 'Employer') + ' · ' + user.status;
+
+    if (type === 'worker') {
+      document.getElementById('um-details').innerHTML = `
+        <div class="detail-row"><span class="dr-label">Handle</span><span class="dr-val">${user.handle}</span></div>
+        <div class="detail-row"><span class="dr-label">State</span><span class="dr-val">${user.state}</span></div>
+        <div class="detail-row"><span class="dr-label">Tasks completed</span><span class="dr-val">${user.tasks}</span></div>
+        <div class="detail-row"><span class="dr-label">Success rate</span><span class="dr-val" style="color:var(--green)">${user.rate}</span></div>
+        <div class="detail-row"><span class="dr-label">Total earned</span><span class="dr-val">${user.earned}</span></div>
+        <div class="detail-row"><span class="dr-label">Current balance</span><span class="dr-val" style="color:var(--green)">${user.balance}</span></div>
+        <div class="detail-row" style="border:none"><span class="dr-label">Status</span><span class="badge ${user.status==='active'?'b-active':user.status==='suspended'?'b-suspended':'b-pending'}">${user.status}</span></div>
+      `;
+      document.getElementById('um-actions').innerHTML = `
+        <button class="modal-btn mb-neutral" onclick="closeModal('user-modal')">Close</button>
+        ${user.status==='suspended'
+          ? `<button class="modal-btn mb-success" onclick="unsuspendUser(${id},'worker');closeModal('user-modal')">Unsuspend account</button>`
+          : `<button class="modal-btn mb-danger" onclick="suspendUser(${id},'worker');closeModal('user-modal')">Suspend account</button>`}
+      `;
+    } else {
+      document.getElementById('um-details').innerHTML = `
+        <div class="detail-row"><span class="dr-label">Handle</span><span class="dr-val">${user.handle}</span></div>
+        <div class="detail-row"><span class="dr-label">Industry</span><span class="dr-val">${user.industry}</span></div>
+        <div class="detail-row"><span class="dr-label">Wallet balance</span><span class="dr-val">${user.wallet}</span></div>
+        <div class="detail-row"><span class="dr-label">Campaigns</span><span class="dr-val">${user.campaigns}</span></div>
+        <div class="detail-row"><span class="dr-label">Total spent</span><span class="dr-val">${user.spent}</span></div>
+        <div class="detail-row" style="border:none"><span class="dr-label">Status</span><span class="badge ${user.status==='verified'?'b-verified':user.status==='suspended'?'b-suspended':'b-pending'}">${user.status}</span></div>
+      `;
+      document.getElementById('um-actions').innerHTML = `
+        <button class="modal-btn mb-neutral" onclick="closeModal('user-modal')">Close</button>
+        ${user.status==='pending'
+          ? `<button class="modal-btn mb-success" onclick="verifyEmployer(${id});closeModal('user-modal')">Verify employer</button>`
+          : `<button class="modal-btn mb-danger" onclick="suspendUser(${id},'employer');closeModal('user-modal')">Suspend account</button>`}
+      `;
+    }
+
+    document.getElementById('user-modal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function suspendUser(id, type) {
+    const list = type === 'worker' ? workers : employers;
+    const user = list.find(u=>u.id===id);
+    if (user) { user.status = 'suspended'; renderWorkers(); renderEmployers(); renderRecentSignups(); }
+    showToast('Account suspended', `${user?.name} has been suspended.`, '🚫', 't-red');
+  }
+
+  function unsuspendUser(id, type) {
+    const user = workers.find(w=>w.id===id);
+    if (user) { user.status = 'active'; renderWorkers(); renderRecentSignups(); }
+    showToast('Account restored', `${user?.name} has been unsuspended.`, '✅', 't-green');
+  }
+
+  function verifyEmployer(id) {
+    const emp = employers.find(e=>e.id===id);
+    if (emp) { emp.status = 'verified'; renderEmployers(); }
+    showToast('Employer verified ✓', `${emp?.name} is now verified.`, '✅', 't-green');
+  }
+
+  function payWorker(id) {
+    const wd = withdrawals.find(w=>w.id===id);
+    const actionsEl = document.getElementById(`wd-actions-${id}`);
+    if (actionsEl) actionsEl.innerHTML = `<span class="paid-label">✓ Paid</span>`;
+    showToast('Payout sent! 💸', `${wd?.amount} sent to ${wd?.name} via Paystack.`, '💸', 't-green');
+  }
+
+  function payAllWithdrawals() {
+    withdrawals.forEach(w => {
+      const el = document.getElementById(`wd-actions-${w.id}`);
+      if (el) el.innerHTML = `<span class="paid-label">✓ Paid</span>`;
+    });
+    showToast('All payouts sent! 💸', '12 workers paid via Paystack successfully.', '💸', 't-green');
+  }
+
+  function resolveDispute(action, party, amount) {
+    if (action === 'pay') {
+      showToast('Dispute resolved', `${amount} paid to ${party}. Dispute closed.`, '✅', 't-green');
+    } else {
+      showToast('Dispute resolved', `${amount} refunded to ${party}. Dispute closed.`, '↩️', 't-blue');
+    }
+  }
+
+  // ── PANEL NAV ──
+  function showPanel(name, btn) {
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    document.getElementById('panel-'+name).classList.add('active');
+    if (btn) btn.classList.add('active');
+    const titles = { overview:'Overview', workers:'Workers', employers:'Employers', tasks:'All Tasks', withdrawals:'Withdrawals', revenue:'Revenue', disputes:'Disputes', settings:'Settings' };
+    document.getElementById('page-title').textContent = titles[name] || name;
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  // ── TOAST ──
+  function showToast(title, sub, icon, cls) {
+    const t = document.getElementById('toast');
+    t.className = 'toast ' + (cls||'t-green');
+    document.getElementById('toast-title').textContent = title;
+    document.getElementById('toast-sub').textContent = sub;
+    document.getElementById('toast-icon').textContent = icon||'✅';
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 4500);
+  }
+</script>
+</body>
+</html>

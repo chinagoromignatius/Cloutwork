@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CloutWork — Employer Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+
+<!-- ── Supabase ── -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- ── Paystack ── -->
+<script src="https://js.paystack.co/v1/inline.js"></script>
+
+<script>
+  // ✅ FIX: use supabase.createClient (the library attaches itself to window.supabase)
+  const SUPABASE_URL      = 'https://nyvljdxeeakatnnqiwjx.supabase.co'
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55dmxqZHhlZWFrYXRubnFpd2p4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NDMxODcsImV4cCI6MjA5MjUxOTE4N30.yRGcDuCXjf7wkrJSz1rPPwH3wQnRncjPfsf3yqHui_Q'
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+</script>
+
+<style>
+  :root {
+    --black: #0a0a0a; --white: #f5f2ee; --red: #ff2d55;
+    --cyan: #00f2ea; --green: #4ade80; --amber: #f59e0b;
+    --blue: #3b82f6; --card: #111118; --card2: #16161e;
+    --input: #1c1c26; --muted: #666; --border: rgba(255,255,255,0.07);
+    --sidebar-w: 240px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body { background: var(--black); color: var(--white); font-family: 'DM Sans', sans-serif; font-size: 14px; min-height: 100vh; display: flex; }
+
+  .sidebar { width: var(--sidebar-w); background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 50; }
+  .sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid var(--border); font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+  .logo-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); box-shadow: 0 0 10px var(--red); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(.8)} }
+
+  .brand-badge { margin: 4px 12px 0; padding: 4px 10px; border-radius: 6px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); font-size: 10px; font-weight: 700; color: var(--blue); text-transform: uppercase; letter-spacing: 0.1em; text-align: center; }
+
+  .sidebar-wallet { margin: 14px 12px; background: linear-gradient(135deg, rgba(59,130,246,0.12), rgba(0,242,234,0.06)); border: 1px solid rgba(59,130,246,0.2); border-radius: 14px; padding: 16px; }
+  .sw-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 4px; }
+  .sw-amount { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -1px; margin-bottom: 12px; }
+  .sw-topup { width: 100%; padding: 9px; border-radius: 8px; background: var(--blue); border: none; color: white; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .sw-topup:hover { background: #2563eb; transform: translateY(-1px); }
+
+  .sidebar-nav { flex: 1; padding: 8px; overflow-y: auto; }
+  .nav-section-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #333; padding: 12px 12px 6px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; color: var(--muted); font-size: 13px; cursor: pointer; transition: all 0.15s; margin-bottom: 2px; border: none; background: none; width: 100%; text-align: left; font-family: 'DM Sans', sans-serif; }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--white); }
+  .nav-item.active { background: rgba(59,130,246,0.1); color: var(--white); border: 1px solid rgba(59,130,246,0.15); }
+  .nav-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+  .nav-badge { margin-left: auto; background: var(--red); color: white; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; min-width: 20px; text-align: center; }
+  .nav-badge.blue { background: var(--blue); }
+
+  .sidebar-footer { padding: 16px 12px; border-top: 1px solid var(--border); }
+  .user-card { display: flex; align-items: center; gap: 10px; }
+  .user-avatar { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--blue), var(--cyan)); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 13px; flex-shrink: 0; }
+  .user-info { flex: 1; min-width: 0; }
+  .user-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-sub { font-size: 11px; color: var(--muted); }
+
+  .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .topbar { height: 60px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; position: sticky; top: 0; background: rgba(10,10,10,0.92); backdrop-filter: blur(16px); z-index: 40; }
+  .page-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .btn-new-task { padding: 9px 18px; border-radius: 8px; background: var(--red); border: none; color: white; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 16px rgba(255,45,85,0.25); }
+  .btn-new-task:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,45,85,0.35); }
+  .notif-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--card2); display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; font-size: 15px; transition: all 0.2s; }
+  .notif-dot { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--red); border: 1.5px solid var(--black); }
+
+  .content { padding: 24px 28px; flex: 1; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; transition: border-color 0.2s; }
+  .stat-card:hover { border-color: rgba(255,255,255,0.12); }
+  .stat-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .stat-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .si-blue { background: rgba(59,130,246,0.1); } .si-green { background: rgba(74,222,128,0.1); } .si-amber { background: rgba(245,158,11,0.1); } .si-red { background: rgba(255,45,85,0.1); }
+  .stat-change { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; }
+  .sc-up { background: rgba(74,222,128,0.1); color: var(--green); } .sc-pending { background: rgba(245,158,11,0.1); color: var(--amber); } .sc-blue { background: rgba(59,130,246,0.1); color: var(--blue); }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.8px; margin-bottom: 4px; }
+  .stat-label { font-size: 12px; color: var(--muted); }
+
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .section-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+  .btn-sm { padding: 7px 14px; border-radius: 7px; border: 1px solid var(--border); background: var(--card2); color: var(--muted); font-size: 12px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+  .btn-sm:hover { color: var(--white); border-color: rgba(255,255,255,0.15); }
+  .btn-sm.primary { background: var(--red); border-color: var(--red); color: white; }
+  .btn-sm.blue { background: var(--blue); border-color: var(--blue); color: white; }
+
+  .campaigns-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+  .campaign-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; display: grid; grid-template-columns: 42px 1fr auto; gap: 16px; align-items: center; transition: border-color 0.2s; }
+  .campaign-card:hover { border-color: rgba(255,255,255,0.1); }
+  .cc-icon { width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .cc-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+  .cc-meta { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .cc-progress { margin-top: 10px; }
+  .prog-bar { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+  .prog-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--blue), var(--cyan)); }
+  .prog-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .cc-right { text-align: right; flex-shrink: 0; }
+  .cc-spend { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; color: var(--white); }
+  .cc-spend-label { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .status-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
+  .sp-live { background: rgba(74,222,128,0.1); color: var(--green); border: 1px solid rgba(74,222,128,0.2); }
+  .sp-paused { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
+  .sp-done { background: rgba(59,130,246,0.1); color: var(--blue); border: 1px solid rgba(59,130,246,0.2); }
+  .sp-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: pulse 1.5s ease-in-out infinite; }
+
+  .submissions-grid { display: flex; flex-direction: column; gap: 10px; }
+  .submission-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 20px; display: grid; grid-template-columns: 40px 1fr auto; gap: 14px; align-items: center; transition: all 0.15s; }
+  .submission-card:hover { border-color: rgba(255,255,255,0.1); }
+  .sub-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, rgba(255,45,85,0.3), rgba(0,242,234,0.2)); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; }
+  .sub-worker { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+  .sub-task { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .sub-proof { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--blue); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+  .sub-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+  .sub-amount { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--white); }
+  .sub-actions { display: flex; gap: 8px; }
+  .btn-approve { padding: 7px 14px; border-radius: 7px; border: 1px solid rgba(74,222,128,0.25); background: rgba(74,222,128,0.1); color: var(--green); font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+  .btn-approve:hover { background: rgba(74,222,128,0.2); transform: translateY(-1px); }
+  .btn-reject { padding: 7px 14px; border-radius: 7px; border: 1px solid rgba(255,45,85,0.2); background: rgba(255,45,85,0.08); color: var(--red); font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+  .btn-reject:hover { background: rgba(255,45,85,0.15); }
+  .approved-tag { font-size: 11px; font-weight: 600; color: var(--green); padding: 4px 10px; border-radius: 6px; background: rgba(74,222,128,0.1); }
+  .rejected-tag { font-size: 11px; font-weight: 600; color: var(--red); padding: 4px 10px; border-radius: 6px; background: rgba(255,45,85,0.08); }
+
+  .post-form-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; max-width: 680px; }
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .field { margin-bottom: 18px; }
+  .field-label { font-size: 12px; font-weight: 500; color: rgba(245,242,238,0.6); margin-bottom: 7px; display: flex; align-items: center; justify-content: space-between; }
+  .field-hint-inline { font-size: 11px; color: var(--muted); font-weight: 400; }
+  .field-input { width: 100%; background: var(--input); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; color: var(--white); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; transition: border-color 0.2s; }
+  .field-input:focus { border-color: rgba(59,130,246,0.4); }
+  .field-input::placeholder { color: #444; }
+  textarea.field-input { resize: vertical; min-height: 90px; line-height: 1.6; }
+  select.field-input { appearance: none; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
+  select.field-input option { background: #16161e; }
+
+  .cost-preview { background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.15); border-radius: 12px; padding: 16px 18px; margin-bottom: 20px; }
+  .cp-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .cp-row:last-child { border-bottom: none; font-weight: 600; }
+  .cp-label { color: var(--muted); }
+  .cp-value { font-family: 'Syne', sans-serif; font-weight: 600; }
+  .cp-total { color: var(--white); font-size: 16px; }
+  .btn-post { width: 100%; padding: 14px; border-radius: 10px; background: var(--red); border: none; color: white; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 20px rgba(255,45,85,0.25); letter-spacing: 0.01em; }
+  .btn-post:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(255,45,85,0.4); }
+
+  .wallet-top { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+  .wallet-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+  .wc-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 8px; }
+  .wc-amount { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 4px; }
+  .wc-sub { font-size: 12px; color: var(--muted); }
+  .topup-card { background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(0,242,234,0.05)); border: 1px solid rgba(59,130,246,0.2); border-radius: 16px; padding: 24px; margin-bottom: 24px; }
+  .topup-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .topup-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+  .topup-amounts { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .topup-pill { padding: 9px 18px; border-radius: 8px; border: 1px solid var(--border); background: var(--input); color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Syne', sans-serif; transition: all 0.15s; }
+  .topup-pill:hover { border-color: rgba(59,130,246,0.4); color: var(--white); }
+  .topup-pill.active { background: rgba(59,130,246,0.15); border-color: var(--blue); color: var(--white); }
+  .topup-input-row { display: flex; gap: 10px; }
+  .topup-input { flex: 1; background: var(--input); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; color: var(--white); font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s; }
+  .topup-input:focus { border-color: rgba(59,130,246,0.4); }
+  .topup-input::placeholder { color: #444; }
+  .btn-topup { padding: 12px 24px; border-radius: 8px; background: var(--blue); border: none; color: white; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; box-shadow: 0 4px 16px rgba(59,130,246,0.3); }
+  .btn-topup:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(59,130,246,0.4); }
+
+  .tx-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .tx-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .tx-row { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  .tx-row:last-child { border-bottom: none; }
+  .tx-row:hover { background: rgba(255,255,255,0.02); }
+  .tx-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .tx-info { flex: 1; min-width: 0; }
+  .tx-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .tx-badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 6px; }
+  .tb-debit { background: rgba(255,45,85,0.1); color: var(--red); }
+  .tb-credit { background: rgba(74,222,128,0.1); color: var(--green); }
+  .tx-amount { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; min-width: 90px; text-align: right; }
+  .ta-red { color: var(--red); } .ta-green { color: var(--green); }
+
+  .analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+  .analytics-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+  .ac-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .ac-sub { font-size: 12px; color: var(--muted); margin-bottom: 18px; }
+  .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 90px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+  .bar-fill { width: 100%; border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.5s; }
+  .bf-blue { background: linear-gradient(180deg, rgba(59,130,246,0.8), rgba(59,130,246,0.3)); }
+  .bf-today { background: linear-gradient(180deg, var(--blue), rgba(59,130,246,0.5)); box-shadow: 0 0 12px rgba(59,130,246,0.3); }
+  .bar-label { font-size: 10px; color: var(--muted); }
+  .task-breakdown { display: flex; flex-direction: column; gap: 10px; }
+  .tb-row { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+  .tb-label { width: 140px; color: var(--muted); font-size: 12px; flex-shrink: 0; }
+  .tb-track { flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+  .tb-fill { height: 100%; border-radius: 3px; }
+  .tb-count { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600; min-width: 30px; text-align: right; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 200; display: none; align-items: center; justify-content: center; padding: 24px; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 20px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; position: relative; animation: modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both; }
+  @keyframes modalIn { from{transform:scale(0.9);opacity:0} to{transform:scale(1);opacity:1} }
+  .modal-close { position: absolute; top: 16px; right: 16px; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card2); color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all 0.2s; }
+  .modal-close:hover { color: var(--white); }
+  .modal-header { padding: 24px 24px 0; border-bottom: 1px solid var(--border); padding-bottom: 18px; }
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
+  .modal-sub { font-size: 12px; color: var(--muted); }
+  .modal-body { padding: 20px 24px; }
+  .proof-viewer { background: var(--input); border: 1px solid var(--border); border-radius: 12px; padding: 32px; text-align: center; margin-bottom: 16px; }
+  .proof-thumb { font-size: 48px; margin-bottom: 10px; }
+  .proof-filename { font-size: 13px; color: var(--muted); }
+  .worker-details { background: var(--input); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+  .wd-row { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; }
+  .wd-label { color: var(--muted); } .wd-val { font-weight: 500; }
+  .modal-actions { display: flex; gap: 10px; }
+  .btn-modal-approve { flex: 1; padding: 13px; border-radius: 9px; background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.25); color: var(--green); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .btn-modal-approve:hover { background: rgba(74,222,128,0.2); transform: translateY(-1px); }
+  .btn-modal-reject { flex: 1; padding: 13px; border-radius: 9px; background: rgba(255,45,85,0.08); border: 1px solid rgba(255,45,85,0.2); color: var(--red); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .btn-modal-reject:hover { background: rgba(255,45,85,0.15); }
+
+  .toast { position: fixed; bottom: 28px; right: 28px; background: var(--card2); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; font-size: 13px; z-index: 1000; transform: translateY(100px); opacity: 0; transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1); box-shadow: 0 8px 32px rgba(0,0,0,0.4); min-width: 260px; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast-green { border: 1px solid rgba(74,222,128,0.25); }
+  .toast-red   { border: 1px solid rgba(255,45,85,0.25); }
+  .toast-blue  { border: 1px solid rgba(59,130,246,0.25); }
+  .toast-title { font-weight: 600; color: var(--white); margin-bottom: 2px; }
+  .toast-sub { font-size: 11px; color: var(--muted); }
+
+  @media (max-width: 1100px) { .stats-row { grid-template-columns: repeat(2,1fr); } .analytics-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; } .content { padding: 16px; } .form-grid-2 { grid-template-columns: 1fr; } .wallet-top { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-dot"></div>
+    CloutWork
+  </div>
+  <div class="brand-badge">Brand / Employer</div>
+
+  <div class="sidebar-wallet">
+    <div class="sw-label">Wallet balance</div>
+    <div class="sw-amount" id="sidebar-wallet-balance">₦0</div>
+    <button class="sw-topup" onclick="showPanel('wallet', document.querySelectorAll('.nav-item')[3])">+ Top up wallet</button>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Campaigns</div>
+    <button class="nav-item active" onclick="showPanel('overview', this)"><span class="nav-icon">📊</span> Overview</button>
+    <button class="nav-item" onclick="showPanel('review', this)"><span class="nav-icon">👁</span> Review Submissions <span class="nav-badge" id="pending-submissions-count">0</span></button>
+    <button class="nav-item" onclick="showPanel('post', this)"><span class="nav-icon">➕</span> Post New Task</button>
+    <button class="nav-item" onclick="showPanel('wallet', this)"><span class="nav-icon">💳</span> Wallet</button>
+    <div class="nav-section-label">Insights</div>
+    <button class="nav-item" onclick="showPanel('analytics', this)"><span class="nav-icon">📈</span> Analytics</button>
+    <button class="nav-item" onclick="alert('Settings coming soon!')"><span class="nav-icon">⚙️</span> Settings</button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="user-avatar" id="user-initials">--</div>
+      <div class="user-info">
+        <div class="user-name" id="user-name">Loading...</div>
+        <div class="user-sub" id="user-handle">@—</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <div class="page-title" id="page-title">Overview</div>
+    <div class="topbar-right">
+      <button class="btn-new-task" onclick="showPanel('post', document.querySelectorAll('.nav-item')[2])">＋ Post new task</button>
+      <div class="notif-btn">🔔<div class="notif-dot"></div></div>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- ══ OVERVIEW ══ -->
+    <div class="panel active" id="panel-overview">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-top"><div class="stat-icon si-blue">📋</div><span class="stat-change sc-blue" id="live-campaigns-label">0 live</span></div>
+          <div class="stat-value" id="stat-campaigns">0</div>
+          <div class="stat-label">Active campaigns</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top"><div class="stat-icon si-amber">⏳</div><span class="stat-change sc-pending" id="pending-label">0 new</span></div>
+          <div class="stat-value" id="stat-pending">0</div>
+          <div class="stat-label">Pending review</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top"><div class="stat-icon si-green">✅</div><span class="stat-change sc-up" id="approved-label">0 today</span></div>
+          <div class="stat-value" id="stat-approved">0</div>
+          <div class="stat-label">Tasks approved</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top"><div class="stat-icon si-red">💸</div></div>
+          <div class="stat-value" id="stat-spent">₦0</div>
+          <div class="stat-label">Total spent</div>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Active campaigns</div>
+        <button class="btn-sm primary" onclick="showPanel('post', document.querySelectorAll('.nav-item')[2])">+ New task</button>
+      </div>
+      <div class="campaigns-list" id="campaigns-list">
+        <div style="text-align:center;padding:32px;color:var(--muted)">Loading campaigns...</div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Needs your review <span style="color:var(--muted);font-weight:400;font-size:13px;font-family:'DM Sans'" id="quick-review-label"></span></div>
+        <button class="btn-sm" onclick="showPanel('review', document.querySelectorAll('.nav-item')[1])">View all →</button>
+      </div>
+      <div class="submissions-grid" id="quick-subs">
+        <div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Loading...</div>
+      </div>
+    </div>
+
+    <!-- ══ REVIEW ══ -->
+    <div class="panel" id="panel-review">
+      <div class="section-header" style="margin-bottom:20px">
+        <div class="section-title">Review Submissions</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-sm" onclick="loadSubmissions('pending',this)" style="color:var(--white);border-color:rgba(255,255,255,0.2)">Pending</button>
+          <button class="btn-sm" onclick="loadSubmissions('approved',this)">Approved</button>
+          <button class="btn-sm" onclick="loadSubmissions('rejected',this)">Rejected</button>
+        </div>
+      </div>
+      <div class="submissions-grid" id="all-subs">
+        <div style="text-align:center;padding:32px;color:var(--muted)">Loading submissions...</div>
+      </div>
+    </div>
+
+    <!-- ══ POST TASK ══ -->
+    <div class="panel" id="panel-post">
+      <div class="section-header" style="margin-bottom:24px">
+        <div class="section-title">Post a new task</div>
+        <div style="font-size:13px;color:var(--muted)">Wallet: <strong style="color:var(--white)" id="post-wallet-balance">₦0</strong> available</div>
+      </div>
+
+      <div class="post-form-card">
+        <div class="field">
+          <div class="field-label">Task type</div>
+          <select class="field-input" id="task-type" onchange="updateCostPreview()">
+            <option value="" disabled selected>Choose a task type</option>
+            <option value="watch">👀 Watch & Comment — ₦50–₦160 per task</option>
+            <option value="follow">➕ Follow & Engage — ₦80–₦320 per task</option>
+            <option value="review">⭐ Honest Comment Review — ₦160–₦800 per task</option>
+            <option value="share">📢 Share & Promote — ₦100–₦400 per task</option>
+            <option value="duet">🔁 Duet / Stitch — ₦800–₦2,500 per task</option>
+            <option value="ugc">🎬 UGC Video — ₦1,600–₦8,000 per task</option>
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-label">Campaign title <span class="field-hint-inline">shown to workers</span></div>
+          <input type="text" class="field-input" id="task-title" placeholder="e.g. Review our new Glow Serum on TikTok" oninput="updateCostPreview()">
+        </div>
+        <div class="field">
+          <div class="field-label">TikTok link for workers to visit</div>
+          <input type="url" class="field-input" id="task-link" placeholder="https://www.tiktok.com/@youraccount/video/...">
+        </div>
+        <div class="field">
+          <div class="field-label">Task instructions <span class="field-hint-inline">tell workers exactly what to do</span></div>
+          <textarea class="field-input" id="task-instructions" placeholder="e.g. Watch the full video, leave a genuine comment, screenshot your comment and submit as proof."></textarea>
+        </div>
+        <div class="form-grid-2">
+          <div class="field">
+            <div class="field-label">Pay per task (₦)</div>
+            <input type="number" class="field-input" id="task-pay" placeholder="e.g. 160" oninput="updateCostPreview()">
+          </div>
+          <div class="field">
+            <div class="field-label">Number of workers needed</div>
+            <input type="number" class="field-input" id="task-workers" placeholder="e.g. 500" oninput="updateCostPreview()">
+          </div>
+        </div>
+        <div class="form-grid-2">
+          <div class="field">
+            <div class="field-label">Worker level</div>
+            <select class="field-input" id="task-level">
+              <option value="any">Any level (most workers)</option>
+              <option value="2">Level 2+ (experienced)</option>
+              <option value="3">Level 3+ (top workers)</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="field-label">Proof type required</div>
+            <select class="field-input" id="task-proof">
+              <option value="screenshot">Screenshot</option>
+              <option value="link">TikTok video link</option>
+              <option value="both">Screenshot + video link</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="cost-preview">
+          <div class="cp-row"><span class="cp-label">Pay per worker</span><span class="cp-value" id="cp-per">₦—</span></div>
+          <div class="cp-row"><span class="cp-label">Number of workers</span><span class="cp-value" id="cp-workers">—</span></div>
+          <div class="cp-row"><span class="cp-label">CloutWork service fee (15%)</span><span class="cp-value" id="cp-fee">₦—</span></div>
+          <div class="cp-row"><span class="cp-label cp-total">Total campaign cost</span><span class="cp-value cp-total" id="cp-total">₦—</span></div>
+        </div>
+
+        <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:10px;padding:12px 14px;font-size:12px;color:rgba(245,158,11,0.85);line-height:1.6;margin-bottom:20px;">
+          ⚠️ Funds are held in escrow. You are only charged for tasks you approve. Rejected tasks return funds to your wallet.
+        </div>
+        <button class="btn-post" onclick="handlePostTask()">Launch campaign →</button>
+      </div>
+    </div>
+
+    <!-- ══ WALLET ══ -->
+    <div class="panel" id="panel-wallet">
+      <div class="wallet-top">
+        <div class="wallet-card">
+          <div class="wc-label">Available balance</div>
+          <div class="wc-amount" id="wallet-balance" style="color:var(--white)">₦0</div>
+          <div class="wc-sub">Ready to spend on campaigns</div>
+        </div>
+        <div class="wallet-card">
+          <div class="wc-label">In escrow</div>
+          <div class="wc-amount" id="wallet-escrow" style="color:var(--amber)">₦0</div>
+          <div class="wc-sub">Held for active campaigns</div>
+        </div>
+        <div class="wallet-card">
+          <div class="wc-label">Total spent</div>
+          <div class="wc-amount" id="wallet-spent" style="color:var(--green)">₦0</div>
+          <div class="wc-sub">Across all campaigns</div>
+        </div>
+      </div>
+
+      <div class="topup-card">
+        <div class="topup-title">Top up your wallet</div>
+        <div class="topup-sub">Pay via Paystack — card, bank transfer, or USSD. Funds appear instantly.</div>
+        <div class="topup-amounts">
+          <button class="topup-pill" onclick="selectTopup(5000,this)">₦5,000</button>
+          <button class="topup-pill" onclick="selectTopup(10000,this)">₦10,000</button>
+          <button class="topup-pill active" onclick="selectTopup(20000,this)">₦20,000</button>
+          <button class="topup-pill" onclick="selectTopup(50000,this)">₦50,000</button>
+          <button class="topup-pill" onclick="selectTopup(100000,this)">₦100,000</button>
+        </div>
+        <div class="topup-input-row">
+          <input type="number" class="topup-input" id="topup-amount" placeholder="Or enter custom amount" value="20000">
+          <button class="btn-topup" onclick="processTopup()">Pay with Paystack →</button>
+        </div>
+      </div>
+
+      <div class="tx-card">
+        <div class="tx-header">
+          <div class="section-title" style="font-size:14px">Wallet transactions</div>
+        </div>
+        <div id="wallet-transactions">
+          <div style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Loading transactions...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ANALYTICS ══ -->
+    <div class="panel" id="panel-analytics">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-top"><div class="stat-icon si-blue">👁</div></div><div class="stat-value" id="ana-approved">0</div><div class="stat-label">Total approvals</div></div>
+        <div class="stat-card"><div class="stat-top"><div class="stat-icon si-red">❌</div></div><div class="stat-value" id="ana-rejected">0</div><div class="stat-label">Total rejections</div></div>
+        <div class="stat-card"><div class="stat-top"><div class="stat-icon si-green">📊</div></div><div class="stat-value" id="ana-rate">—</div><div class="stat-label">Approval rate</div></div>
+        <div class="stat-card"><div class="stat-top"><div class="stat-icon si-amber">⏱</div></div><div class="stat-value">2.4h</div><div class="stat-label">Avg completion time</div></div>
+      </div>
+      <div class="analytics-grid">
+        <div class="analytics-card">
+          <div class="ac-title">Daily submissions this week</div>
+          <div class="ac-sub">Total tasks submitted per day</div>
+          <div class="bar-chart">
+            <div class="bar-col"><div class="bar-fill bf-blue" style="height:45%"></div><div class="bar-label">Mon</div></div>
+            <div class="bar-col"><div class="bar-fill bf-blue" style="height:70%"></div><div class="bar-label">Tue</div></div>
+            <div class="bar-col"><div class="bar-fill bf-blue" style="height:35%"></div><div class="bar-label">Wed</div></div>
+            <div class="bar-col"><div class="bar-fill bf-blue" style="height:85%"></div><div class="bar-label">Thu</div></div>
+            <div class="bar-col"><div class="bar-fill bf-blue" style="height:60%"></div><div class="bar-label">Fri</div></div>
+            <div class="bar-col"><div class="bar-fill bf-blue" style="height:95%"></div><div class="bar-label">Sat</div></div>
+            <div class="bar-col"><div class="bar-fill bf-today" style="height:50%"></div><div class="bar-label" style="color:var(--blue)">Sun</div></div>
+          </div>
+        </div>
+        <div class="analytics-card">
+          <div class="ac-title">Task type breakdown</div>
+          <div class="ac-sub">Completions by category</div>
+          <div class="task-breakdown" id="type-breakdown">
+            <div style="color:var(--muted);font-size:13px">Loading...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- PROOF REVIEW MODAL -->
+<div class="modal-overlay" id="proof-modal" onclick="closeProofOutside(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeProof()">✕</button>
+    <div class="modal-header">
+      <div class="modal-title" id="pm-title">Review Submission</div>
+      <div class="modal-sub" id="pm-sub"></div>
+    </div>
+    <div class="modal-body">
+      <div class="proof-viewer">
+        <div class="proof-thumb" id="pm-thumb">📸</div>
+        <div class="proof-filename" id="pm-file"></div>
+        <div style="margin-top:12px">
+          <a id="pm-proof-link" href="#" target="_blank" style="font-size:12px;color:var(--blue);text-decoration:underline;">View full proof ↗</a>
+        </div>
+      </div>
+      <div class="worker-details">
+        <div class="wd-row"><span class="wd-label">Worker</span><span class="wd-val" id="pm-worker">—</span></div>
+        <div class="wd-row"><span class="wd-label">Submitted</span><span class="wd-val" id="pm-time">—</span></div>
+        <div class="wd-row"><span class="wd-label">Payment on approval</span><span class="wd-val" style="color:var(--green);font-family:'Syne',sans-serif;font-weight:700" id="pm-pay">₦0</span></div>
+      </div>
+      <div class="modal-actions" id="pm-actions">
+        <button class="btn-modal-approve" onclick="approveFromModal()">✓ Approve — pay worker</button>
+        <button class="btn-modal-reject" onclick="rejectFromModal()">✕ Reject — return funds</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span id="toast-icon" style="font-size:20px">✅</span>
+  <div>
+    <div class="toast-title" id="toast-title">Done</div>
+    <div class="toast-sub" id="toast-sub">Action completed.</div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// GLOBAL STATE
+// ================================================================
+let currentUser    = null
+let currentWallet  = null
+let currentSubId   = null   // submission being reviewed in modal
+
+// ================================================================
+// BOOT
+// ================================================================
+async function boot() {
+  const { data: { session } } = await sb.auth.getSession()
+  if (!session) { window.location.href = 'cloutwork-auth.html'; return }
+  currentUser = session.user
+  await Promise.all([ loadProfile(), loadWallet() ])
+  loadOverview()
+  loadSubmissions('pending')
+}
+
+// ================================================================
+// LOAD PROFILE
+// ================================================================
+async function loadProfile() {
+  const { data: p } = await sb.from('profiles').select('*').eq('id', currentUser.id).single()
+  if (!p) return
+  const initials = ((p.first_name?.[0] || '') + (p.last_name?.[0] || '')).toUpperCase() || '?'
+  const name     = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Employer'
+  document.getElementById('user-initials').textContent = initials
+  document.getElementById('user-name').textContent     = name
+  document.getElementById('user-handle').textContent   = p.tiktok_handle || p.email || ''
+}
+
+// ================================================================
+// LOAD WALLET
+// ================================================================
+async function loadWallet() {
+  const { data: w } = await sb.from('wallets').select('*').eq('user_id', currentUser.id).single()
+  if (!w) return
+  currentWallet = w
+  const fmt = n => `₦${Number(n||0).toLocaleString()}`
+  ;['sidebar-wallet-balance','wallet-balance','post-wallet-balance'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = fmt(w.balance)
+  })
+  const we = document.getElementById('wallet-escrow'); if (we) we.textContent = fmt(w.escrow)
+  const ws = document.getElementById('wallet-spent');  if (ws) ws.textContent = fmt(w.total_earned)
+
+  // Wallet transactions
+  const { data: txns } = await sb.from('transactions').select('*').eq('user_id', currentUser.id).order('created_at', { ascending:false }).limit(15)
+  const txList = document.getElementById('wallet-transactions')
+  if (!txns || txns.length === 0) {
+    txList.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No transactions yet.</div>`
+    return
+  }
+  const ico = { topup:'💳', task_spend:'🎬', refund:'↩️', escrow:'🔒' }
+  const bg  = { topup:'rgba(74,222,128,0.1)', task_spend:'rgba(255,45,85,0.1)', refund:'rgba(74,222,128,0.1)', escrow:'rgba(245,158,11,0.1)' }
+  txList.innerHTML = txns.map(tx => `
+    <div class="tx-row">
+      <div class="tx-icon" style="background:${bg[tx.type]||'rgba(255,255,255,0.05)'};border-radius:10px">${ico[tx.type]||'💰'}</div>
+      <div class="tx-info">
+        <div class="tx-title">${tx.description || tx.type}</div>
+        <div class="tx-date">${timeAgo(tx.created_at)}</div>
+      </div>
+      <span class="tx-badge ${tx.type==='topup'||tx.type==='refund' ? 'tb-credit' : 'tb-debit'}">${tx.type==='topup'||tx.type==='refund' ? 'Credit' : 'Debit'}</span>
+      <div class="tx-amount ${tx.type==='topup'||tx.type==='refund' ? 'ta-green' : 'ta-red'}">${tx.type==='topup'||tx.type==='refund' ? '+' : '−'}₦${Number(tx.amount).toLocaleString()}</div>
+    </div>`).join('')
+}
+
+// ================================================================
+// LOAD OVERVIEW
+// ================================================================
+async function loadOverview() {
+  // Campaigns
+  const { data: campaigns } = await sb.from('tasks').select('*').eq('employer_id', currentUser.id).order('created_at', { ascending:false })
+  const live    = campaigns?.filter(c => c.status === 'live').length || 0
+  const total   = campaigns?.length || 0
+
+  document.getElementById('stat-campaigns').textContent     = total
+  document.getElementById('live-campaigns-label').textContent = `${live} live`
+
+  // Render campaign cards
+  const cl = document.getElementById('campaigns-list')
+  if (!campaigns || campaigns.length === 0) {
+    cl.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted)">No campaigns yet. <a href="#" onclick="showPanel('post',document.querySelectorAll('.nav-item')[2])" style="color:var(--blue)">Post your first task →</a></div>`
+  } else {
+    cl.innerHTML = campaigns.map(c => {
+      const done  = c.workers_done || 0
+      const need  = c.workers_needed || 1
+      const pct   = Math.min(100, Math.round(done / need * 100))
+      const spent = done * Number(c.pay_per_task)
+      const emoji = { watch:'👀', follow:'➕', review:'⭐', ugc:'🎬', duet:'🔁', share:'📢' }
+      const bg    = { watch:'rgba(255,45,85,0.1)', follow:'rgba(74,222,128,0.08)', review:'rgba(245,158,11,0.1)', ugc:'rgba(0,242,234,0.08)', duet:'rgba(139,92,246,0.1)', share:'rgba(255,45,85,0.1)' }
+      return `
+        <div class="campaign-card">
+          <div class="cc-icon" style="background:${bg[c.task_type]||'rgba(255,255,255,0.05)'}">${emoji[c.task_type]||'📋'}</div>
+          <div class="cc-info">
+            <div class="cc-title">${c.title}</div>
+            <div class="cc-meta"><span>₦${Number(c.pay_per_task).toLocaleString()} per task</span><span>·</span><span>${done} / ${need} completed</span></div>
+            <div class="cc-progress">
+              <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+              <div class="prog-labels"><span>${done} done</span><span>${pct}%</span><span>${need} target</span></div>
+            </div>
+          </div>
+          <div class="cc-right">
+            <div class="cc-spend-label">Spent so far</div>
+            <div class="cc-spend">₦${spent.toLocaleString()}</div>
+            <div style="margin-top:8px">
+              <span class="status-pill ${c.status==='live'?'sp-live':c.status==='paused'?'sp-paused':'sp-done'}">
+                ${c.status==='live'?'<span class="sp-dot"></span>Live':c.status==='paused'?'⏸ Paused':'✓ Done'}
+              </span>
+            </div>
+          </div>
+        </div>`
+    }).join('')
+  }
+
+  // Quick submissions preview (first 3 pending)
+  const { data: pending } = await sb.from('submissions')
+    .select('*, tasks!inner(employer_id, title, pay_per_task), profiles(first_name, last_name, tiktok_handle)')
+    .eq('tasks.employer_id', currentUser.id)
+    .eq('status', 'pending')
+    .order('submitted_at', { ascending:false })
+    .limit(3)
+
+  const pc = pending?.length || 0
+  document.getElementById('stat-pending').textContent       = pc
+  document.getElementById('pending-label').textContent      = `${pc} new`
+  document.getElementById('pending-submissions-count').textContent = pc
+  document.getElementById('quick-review-label').textContent = pc > 0 ? `— ${pc} submissions` : '— none pending'
+
+  renderSubCards(pending || [], 'quick-subs')
+
+  // Approved total
+  const { count: approvedTotal } = await sb.from('submissions')
+    .select('*, tasks!inner(employer_id)', { count:'exact', head:true })
+    .eq('tasks.employer_id', currentUser.id)
+    .eq('status', 'approved')
+  document.getElementById('stat-approved').textContent = approvedTotal || 0
+
+  // Total spent from wallet
+  const { data: wData } = await sb.from('wallets').select('total_earned').eq('user_id', currentUser.id).single()
+  document.getElementById('stat-spent').textContent = `₦${Number(wData?.total_earned||0).toLocaleString()}`
+}
+
+// ================================================================
+// LOAD SUBMISSIONS
+// ================================================================
+async function loadSubmissions(status = 'pending', btn) {
+  if (btn) {
+    document.querySelectorAll('#panel-review .btn-sm').forEach(b => { b.style.color = ''; b.style.borderColor = ''; })
+    btn.style.color = 'var(--white)'; btn.style.borderColor = 'rgba(255,255,255,0.2)'
+  }
+  const list = document.getElementById('all-subs')
+  list.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted)">Loading...</div>`
+
+  const { data: subs } = await sb.from('submissions')
+    .select('*, tasks!inner(employer_id, title, task_type, pay_per_task), profiles(first_name, last_name, tiktok_handle)')
+    .eq('tasks.employer_id', currentUser.id)
+    .eq('status', status)
+    .order('submitted_at', { ascending:false })
+
+  if (!subs || subs.length === 0) {
+    list.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">No ${status} submissions.</div>`
+    return
+  }
+  renderSubCards(subs, 'all-subs')
+}
+
+// ================================================================
+// RENDER SUBMISSION CARDS
+// ================================================================
+function renderSubCards(subs, containerId) {
+  const container = document.getElementById(containerId)
+  if (!subs || subs.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No submissions to show.</div>`
+    return
+  }
+  container.innerHTML = subs.map(s => {
+    const task     = s.tasks || {}
+    const profile  = s.profiles || {}
+    const workerName = profile.tiktok_handle || `${profile.first_name||''} ${profile.last_name||''}`.trim() || 'Worker'
+    const initials = ((profile.first_name?.[0]||'') + (profile.last_name?.[0]||'')).toUpperCase() || 'W'
+    const pay      = `₦${Number(task.pay_per_task||0).toLocaleString()}`
+    const isPending = s.status === 'pending'
+
+    return `
+      <div class="submission-card" id="sub-${s.id}">
+        <div class="sub-avatar">${initials}</div>
+        <div>
+          <div class="sub-worker">${workerName} <span style="font-size:11px;color:var(--muted);font-weight:400">· ${timeAgo(s.submitted_at)}</span></div>
+          <div class="sub-task">${task.title || 'Unknown task'}</div>
+          <span class="sub-proof" onclick="openProof('${s.id}')">
+            📎 ${s.proof_url ? 'Screenshot' : s.proof_link ? 'TikTok link' : 'No proof'} — click to review
+          </span>
+        </div>
+        <div class="sub-right">
+          <div class="sub-amount">${pay}</div>
+          <div class="sub-actions" id="actions-${s.id}">
+            ${isPending
+              ? `<button class="btn-approve" onclick="approveTask('${s.id}','${workerName}','${pay}')">✓ Approve</button>
+                 <button class="btn-reject"  onclick="rejectTask('${s.id}','${workerName}')">✕ Reject</button>`
+              : `<span class="${s.status==='approved'?'approved-tag':'rejected-tag'}">${s.status==='approved'?'✓ Approved':'✕ Rejected'}</span>`}
+          </div>
+        </div>
+      </div>`
+  }).join('')
+}
+
+// ================================================================
+// APPROVE / REJECT
+// ================================================================
+async function approveTask(subId, workerName, pay) {
+  const { error } = await sb.from('submissions').update({ status:'approved', reviewed_at: new Date().toISOString() }).eq('id', subId)
+  if (error) { alert('Could not approve: ' + error.message); return }
+  document.getElementById(`actions-${subId}`).innerHTML = `<span class="approved-tag">✓ Approved</span>`
+  showToast('Approved! 💸', `${pay} sent to ${workerName}.`, '✅', 'toast-green')
+  loadOverview()
+}
+
+async function rejectTask(subId, workerName) {
+  const { error } = await sb.from('submissions').update({ status:'rejected', reviewed_at: new Date().toISOString() }).eq('id', subId)
+  if (error) { alert('Could not reject: ' + error.message); return }
+  document.getElementById(`actions-${subId}`).innerHTML = `<span class="rejected-tag">✕ Rejected</span>`
+  showToast('Rejected', `Submission from ${workerName} rejected. Funds returned.`, '↩️', 'toast-red')
+}
+
+// ================================================================
+// PROOF MODAL
+// ================================================================
+async function openProof(subId) {
+  currentSubId = subId
+  const { data: s } = await sb.from('submissions')
+    .select('*, tasks(title, pay_per_task), profiles(first_name, last_name, tiktok_handle)')
+    .eq('id', subId).single()
+  if (!s) return
+
+  const profile = s.profiles || {}
+  const task    = s.tasks    || {}
+  const worker  = profile.tiktok_handle || `${profile.first_name||''} ${profile.last_name||''}`.trim() || 'Worker'
+  const hasImg  = !!s.proof_url
+  const hasLink = !!s.proof_link
+
+  document.getElementById('pm-title').textContent  = `Review: ${worker}`
+  document.getElementById('pm-sub').textContent    = task.title || 'Task'
+  document.getElementById('pm-worker').textContent = worker
+  document.getElementById('pm-time').textContent   = timeAgo(s.submitted_at)
+  document.getElementById('pm-pay').textContent    = `₦${Number(task.pay_per_task||0).toLocaleString()}`
+  document.getElementById('pm-thumb').textContent  = hasImg ? '🖼️' : hasLink ? '🎬' : '📎'
+  document.getElementById('pm-file').textContent   = hasImg ? 'Screenshot submitted' : hasLink ? s.proof_link : 'No proof attached'
+
+  const proofLink = document.getElementById('pm-proof-link')
+  proofLink.href = s.proof_url || s.proof_link || '#'
+  proofLink.style.display = (s.proof_url || s.proof_link) ? 'inline' : 'none'
+
+  document.getElementById('pm-actions').innerHTML = s.status !== 'pending'
+    ? `<div class="${s.status==='approved'?'approved-tag':'rejected-tag'}" style="width:100%;text-align:center;padding:14px;font-size:14px">${s.status==='approved'?'✓ Already approved':'✕ Already rejected'}</div>`
+    : `<button class="btn-modal-approve" onclick="approveFromModal()">✓ Approve — pay worker</button>
+       <button class="btn-modal-reject"  onclick="rejectFromModal()">✕ Reject — return funds</button>`
+
+  document.getElementById('proof-modal').classList.add('show')
+  document.body.style.overflow = 'hidden'
+}
+
+async function approveFromModal() {
+  const { data: s } = await sb.from('submissions').select('tasks(title,pay_per_task), profiles(tiktok_handle,first_name,last_name)').eq('id', currentSubId).single()
+  const worker = s?.profiles?.tiktok_handle || `${s?.profiles?.first_name||''} ${s?.profiles?.last_name||''}`.trim() || 'Worker'
+  const pay    = `₦${Number(s?.tasks?.pay_per_task||0).toLocaleString()}`
+  await approveTask(currentSubId, worker, pay)
+  closeProof()
+}
+
+async function rejectFromModal() {
+  const { data: s } = await sb.from('submissions').select('profiles(tiktok_handle,first_name,last_name)').eq('id', currentSubId).single()
+  const worker = s?.profiles?.tiktok_handle || `${s?.profiles?.first_name||''} ${s?.profiles?.last_name||''}`.trim() || 'Worker'
+  await rejectTask(currentSubId, worker)
+  closeProof()
+}
+
+function closeProof() { document.getElementById('proof-modal').classList.remove('show'); document.body.style.overflow = '' }
+function closeProofOutside(e) { if (e.target === document.getElementById('proof-modal')) closeProof() }
+
+// ================================================================
+// POST TASK → saves to Supabase tasks table
+// ================================================================
+async function handlePostTask() {
+  const type        = document.getElementById('task-type').value
+  const title       = document.getElementById('task-title').value.trim()
+  const link        = document.getElementById('task-link').value.trim()
+  const instructions = document.getElementById('task-instructions').value.trim()
+  const pay         = Number(document.getElementById('task-pay').value)
+  const workers     = Number(document.getElementById('task-workers').value)
+  const proofType   = document.getElementById('task-proof').value
+  const workerLevel = document.getElementById('task-level').value
+
+  if (!type)          { alert('Please select a task type.'); return }
+  if (!title)         { alert('Please enter a campaign title.'); return }
+  if (!pay || pay<50) { alert('Minimum pay per task is ₦50.'); return }
+  if (!workers||workers<1) { alert('Please enter the number of workers needed.'); return }
+
+  const totalCost = Math.round(pay * workers * 1.15)
+  const balance   = currentWallet ? Number(currentWallet.balance) : 0
+  if (totalCost > balance) {
+    alert(`Total campaign cost (₦${totalCost.toLocaleString()}) exceeds your wallet balance of ₦${balance.toLocaleString()}. Please top up first.`)
+    return
+  }
+
+  const btn = document.querySelector('.btn-post')
+  btn.textContent = 'Launching...'; btn.style.pointerEvents = 'none'
+
+  const { error } = await sb.from('tasks').insert({
+    employer_id:     currentUser.id,
+    title,
+    task_type:       type,
+    tiktok_url:      link,
+    instructions,
+    pay_per_task:    pay,
+    workers_needed:  workers,
+    proof_type:      proofType,
+    worker_level:    workerLevel,
+    status:          'live'
+  })
+
+  btn.textContent = 'Launch campaign →'; btn.style.pointerEvents = ''
+
+  if (error) { alert('Could not post task: ' + error.message); return }
+
+  // Clear form
+  ;['task-type','task-title','task-link','task-instructions','task-pay','task-workers'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = ''
+  })
+  updateCostPreview()
+
+  showPanel('overview', document.querySelectorAll('.nav-item')[0])
+  showToast('Campaign launched! 🚀', `"${title}" is now live. Workers can start completing tasks.`, '🚀', 'toast-blue')
+  loadOverview()
+}
+
+// ================================================================
+// COST PREVIEW
+// ================================================================
+function updateCostPreview() {
+  const pay     = parseFloat(document.getElementById('task-pay').value)     || 0
+  const workers = parseFloat(document.getElementById('task-workers').value) || 0
+  const wTotal  = pay * workers
+  const fee     = wTotal * 0.15
+  const total   = wTotal + fee
+  document.getElementById('cp-per').textContent     = pay     ? `₦${pay.toLocaleString()}`                    : '₦—'
+  document.getElementById('cp-workers').textContent = workers ? workers.toString()                             : '—'
+  document.getElementById('cp-fee').textContent     = fee     ? `₦${Math.round(fee).toLocaleString()}`        : '₦—'
+  document.getElementById('cp-total').textContent   = total   ? `₦${Math.round(total).toLocaleString()}`      : '₦—'
+}
+
+// ================================================================
+// PAYSTACK TOP-UP
+// ================================================================
+function selectTopup(amount, btn) {
+  document.querySelectorAll('.topup-pill').forEach(p => p.classList.remove('active'))
+  btn.classList.add('active')
+  document.getElementById('topup-amount').value = amount
+}
+
+async function processTopup() {
+  const amount = parseInt(document.getElementById('topup-amount').value)
+  if (!amount || amount < 1000) { alert('Minimum top-up is ₦1,000'); return }
+
+  // ✅ NOTE: Replace 'pk_test_xxxx' with your real Paystack PUBLIC key
+  // Get it from: paystack.com → Settings → API Keys
+  const PAYSTACK_PUBLIC_KEY = 'pk_test_YOUR_PUBLIC_KEY_HERE'
+
+  if (PAYSTACK_PUBLIC_KEY.includes('YOUR_PUBLIC_KEY')) {
+    // Demo mode — no real Paystack key yet
+    showToast('Paystack not yet connected', 'Add your Paystack public key to enable real payments.', '💳', 'toast-blue')
+    return
+  }
+
+  const handler = PaystackPop.setup({
+    key:      PAYSTACK_PUBLIC_KEY,
+    email:    currentUser.email,
+    amount:   amount * 100,   // Paystack uses kobo (₦1 = 100 kobo)
+    currency: 'NGN',
+    ref:      'CW_' + Date.now(),
+    callback: async function(response) {
+      // Payment successful — record the top-up transaction
+      await sb.from('transactions').insert({
+        user_id:     currentUser.id,
+        type:        'topup',
+        amount:      amount,
+        description: 'Wallet top-up via Paystack',
+        reference:   response.reference,
+        status:      'completed'
+      })
+      // Reload wallet balance
+      await loadWallet()
+      showToast('Wallet topped up! 💳', `₦${amount.toLocaleString()} added to your wallet.`, '💳', 'toast-blue')
+    },
+    onClose: function() {
+      showToast('Payment cancelled', 'You closed the payment window.', '❌', 'toast-red')
+    }
+  })
+  handler.openIframe()
+}
+
+// ================================================================
+// ANALYTICS
+// ================================================================
+async function loadAnalytics() {
+  const [{ count: approved }, { count: rejected }] = await Promise.all([
+    sb.from('submissions').select('*, tasks!inner(employer_id)', { count:'exact', head:true }).eq('tasks.employer_id', currentUser.id).eq('status','approved'),
+    sb.from('submissions').select('*, tasks!inner(employer_id)', { count:'exact', head:true }).eq('tasks.employer_id', currentUser.id).eq('status','rejected'),
+  ])
+  const app = approved || 0
+  const rej = rejected || 0
+  const tot = app + rej
+  document.getElementById('ana-approved').textContent = app
+  document.getElementById('ana-rejected').textContent = rej
+  document.getElementById('ana-rate').textContent     = tot > 0 ? Math.round(app/tot*100) + '%' : '—'
+
+  // Task type breakdown from tasks table
+  const { data: tasks } = await sb.from('tasks').select('task_type, workers_done').eq('employer_id', currentUser.id)
+  const byType = {}
+  tasks?.forEach(t => { byType[t.task_type] = (byType[t.task_type]||0) + (t.workers_done||0) })
+  const max   = Math.max(...Object.values(byType), 1)
+  const emoji = { watch:'👀 Watch & Comment', follow:'➕ Follow & Engage', review:'⭐ Comment Review', ugc:'🎬 UGC Video', duet:'🔁 Duet / Stitch', share:'📢 Share & Promote' }
+  const color = { watch:'var(--red)', follow:'var(--green)', review:'var(--amber)', ugc:'var(--cyan)', duet:'#8b5cf6', share:'var(--red)' }
+  const bd = document.getElementById('type-breakdown')
+  if (Object.keys(byType).length === 0) { bd.innerHTML = `<div style="color:var(--muted);font-size:13px">No completed tasks yet.</div>`; return }
+  bd.innerHTML = Object.entries(byType).map(([type, count]) => `
+    <div class="tb-row">
+      <span class="tb-label">${emoji[type]||type}</span>
+      <div class="tb-track"><div class="tb-fill" style="width:${Math.round(count/max*100)}%;background:${color[type]||'var(--blue)'}"></div></div>
+      <span class="tb-count">${count}</span>
+    </div>`).join('')
+}
+
+// ================================================================
+// PANEL NAVIGATION
+// ================================================================
+function showPanel(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'))
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
+  document.getElementById('panel-' + name).classList.add('active')
+  if (btn) btn.classList.add('active')
+  const titles = { overview:'Overview', review:'Review Submissions', post:'Post New Task', wallet:'Wallet', analytics:'Analytics' }
+  document.getElementById('page-title').textContent = titles[name] || name
+  if (name === 'analytics') loadAnalytics()
+  if (name === 'wallet')    loadWallet()
+}
+
+// ================================================================
+// TOAST + HELPERS
+// ================================================================
+function showToast(title, sub, icon, cls) {
+  const t = document.getElementById('toast')
+  t.className = 'toast ' + (cls || 'toast-green')
+  document.getElementById('toast-title').textContent = title
+  document.getElementById('toast-sub').textContent   = sub
+  document.getElementById('toast-icon').textContent  = icon || '✅'
+  t.classList.add('show')
+  setTimeout(() => t.classList.remove('show'), 4500)
+}
+
+function timeAgo(iso) {
+  if (!iso) return '—'
+  const d = Math.floor((Date.now() - new Date(iso)) / 1000)
+  if (d < 3600)  return `${Math.floor(d/60)} min ago`
+  if (d < 86400) return `${Math.floor(d/3600)} hr ago`
+  return `${Math.floor(d/86400)} day${Math.floor(d/86400)!==1?'s':''} ago`
+}
+
+// ================================================================
+// START
+// ================================================================
+boot()
+</script>
+</body>
+</html>
