@@ -1116,39 +1116,58 @@
     if (!valid) return;
 
     btn.textContent = 'Creating account...';
-    btn.classList.add('loading');
+    btn.disabled = true;
 
     try {
-      // 1. Create auth account
-      const { data, error } = await sb.auth.signUp({
-        email, password,
-        options: { emailRedirectTo: 'https://yoursite.com/cloutwork-auth.html' }
-      });
+      // 1. Create auth account in Supabase
+      const { data, error } = await sb.auth.signUp({ email, password });
 
-      if (error) { alert(error.message); return; }
+      if (error) {
+        alert('Signup failed: ' + error.message);
+        return;
+      }
 
-      // 2. Save profile info to profiles table
-      await sb.from('profiles').upsert({
-        id:            data.user.id,
-        role:          'worker',
-        first_name:    firstName,
-        last_name:     lastName,
-        email,
-        phone,
-        tiktok_handle: document.getElementById('tiktok').value.trim(),
-        state,
-        status:        'active'
-      }, { onConflict: 'id' });
+      // 2. Save profile — works whether email confirmation is on or off
+      //    data.user is available immediately when confirmation is OFF
+      const userId = data.user ? data.user.id : data.session?.user?.id;
 
-      // 3. Show OTP screen (email confirmation)
+      if (userId) {
+        const { error: profileError } = await sb.from('profiles').upsert({
+          id:            userId,
+          role:          'worker',
+          first_name:    firstName,
+          last_name:     lastName,
+          email,
+          phone,
+          tiktok_handle: document.getElementById('tiktok').value.trim(),
+          state,
+          status:        'active'
+        }, { onConflict: 'id' });
+
+        if (profileError) {
+          console.error('Profile error:', profileError.message);
+        }
+      }
+
+      // 3. If email confirmation is OFF, session exists immediately
+      //    → skip OTP screen and go straight to dashboard
+      if (data.session) {
+        localStorage.setItem('cw_name', firstName);
+        window.location.href = 'cloutwork-workers-dashboard.html';
+        return;
+      }
+
+      // 4. If email confirmation is ON, show the OTP/waiting screen
       localStorage.setItem('cw_name', firstName);
       document.getElementById('otp-email').textContent = email;
       showStep('step-otp');
+
     } catch (err) {
-      alert('Something went wrong. Please try again.');
+      console.error('Signup error:', err);
+      alert('Signup error: ' + (err.message || String(err)));
     } finally {
       btn.textContent = 'Create my free account →';
-      btn.classList.remove('loading');
+      btn.disabled = false;
     }
   }
 
@@ -1163,32 +1182,36 @@
     if (!password) { showError('login-password', 'Enter your password'); return; }
 
     btn.textContent = 'Logging in...';
-    btn.classList.add('loading');
+    btn.disabled = true;
 
     try {
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
 
-      if (error) { showError('login-email', 'Invalid email or password'); return; }
+      if (error) {
+        showError('login-email', 'Invalid email or password');
+        return;
+      }
 
-      const { data: profile, error: profileErr } = await sb
+      // Fetch their role — use maybeSingle() so null profile doesn't crash
+      const { data: profile } = await sb
         .from('profiles')
         .select('role')
         .eq('id', data.user.id)
         .maybeSingle();
 
-      // If profile missing (new user whose profile wasn't saved yet)
-      // create it now and send them to worker dashboard
-      if (profileErr || !profile) {
+      // If no profile row exists yet, create one and send to worker dashboard
+      if (!profile) {
         await sb.from('profiles').upsert({
-          id:    data.user.id,
-          role:  'worker',
-          email: data.user.email,
+          id:     data.user.id,
+          role:   'worker',
+          email:  data.user.email,
           status: 'active'
         }, { onConflict: 'id' });
         window.location.href = 'cloutwork-workers-dashboard.html';
         return;
       }
 
+      // Redirect based on role
       if (profile.role === 'worker')
         window.location.href = 'cloutwork-workers-dashboard.html';
       else if (profile.role === 'employer')
@@ -1197,11 +1220,13 @@
         window.location.href = 'cloutwork-admin.html';
       else
         window.location.href = 'cloutwork-workers-dashboard.html';
+
     } catch (err) {
-      alert('Something went wrong. Please try again.');
+      console.error('Login error:', err);
+      alert('Login error: ' + (err.message || String(err)));
     } finally {
       btn.textContent = 'Log in to CloutWork →';
-      btn.classList.remove('loading');
+      btn.disabled = false;
     }
   }
 
@@ -1222,11 +1247,11 @@
 
     const btn = document.querySelector('#step-otp .btn-submit');
     btn.textContent = 'Verifying...';
-    btn.classList.add('loading');
+    btn.disabled = true;
 
     setTimeout(() => {
       btn.textContent = 'Verify & continue →';
-      btn.classList.remove('loading');
+      btn.disabled = false;
       showStep('step-bank');
     }, 1000);
   }
@@ -1307,46 +1332,37 @@
     }
   }
 
-  // ── HANDLE EMAIL CONFIRMATION LINK ──────────────────────────────
-  // When a user clicks the confirmation link in their email,
-  // Supabase redirects them back here with tokens in the URL hash.
-  // We detect this, confirm the session, save their profile, and
-  // redirect them to their dashboard automatically.
-  async function handleEmailConfirmation() {
-    const hash = window.location.hash
-    if (!hash || !hash.includes('access_token')) return
+  // Handle email confirmation link click
+  // Supabase puts tokens in the URL hash — detect and auto-login
+  async function handleConfirmationLink() {
+    const hash = window.location.hash;
+    if (!hash || !hash.includes('access_token')) return;
 
     try {
-      // Extract the session from the URL hash
-      const { data, error } = await sb.auth.getSession()
-      if (error || !data.session) return
+      const { data, error } = await sb.auth.getSession();
+      if (error || !data.session) return;
 
-      const user = data.session.user
+      const user = data.session.user;
 
-      // Try to save profile if it wasn't saved during signup
-      const savedName = localStorage.getItem('cw_name') || ''
+      // Make sure profile exists
       await sb.from('profiles').upsert({
         id:     user.id,
         role:   'worker',
         email:  user.email,
         status: 'active'
-      }, { onConflict: 'id' })
+      }, { onConflict: 'id' });
 
-      // Clear the hash from the URL so it looks clean
-      window.history.replaceState(null, '', window.location.pathname)
-
-      // Redirect to worker dashboard
-      window.location.href = 'cloutwork-workers-dashboard.html'
+      // Clean URL and redirect
+      window.history.replaceState(null, '', window.location.pathname);
+      window.location.href = 'cloutwork-workers-dashboard.html';
 
     } catch (err) {
-      console.error('Email confirmation error:', err)
-      // If something fails, just show the login tab
-      switchTabDirect('login')
+      console.error('Confirmation error:', err);
     }
   }
 
-  // Run on page load
-  handleEmailConfirmation()
+  // Run on page load to catch confirmation links
+  handleConfirmationLink();
 </script>
 
 </body>
