@@ -267,6 +267,26 @@
     transition: all 0.2s;
   }
 
+  .role-btn {
+    padding: 14px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--input);
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    width: 100%;
+  }
+  .role-btn:hover { border-color: rgba(255,255,255,0.2); }
+  .role-btn.active {
+    background: rgba(255,45,85,0.12);
+    border-color: rgba(255,45,85,0.4);
+    box-shadow: 0 0 0 2px rgba(255,45,85,0.15);
+  }
+
   .auth-tab.active {
     background: var(--card-bg);
     color: var(--white);
@@ -766,6 +786,23 @@
       <div class="form-title">Join CloutWork</div>
       <p class="form-sub">Already have an account? <a href="#" onclick="switchTabDirect('login')">Log in here</a></p>
 
+      <!-- ROLE SELECTOR -->
+      <div class="field">
+        <div class="field-label">I am signing up as</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="role-toggle">
+          <button type="button" class="role-btn active" id="role-worker" onclick="selectRole('worker')">
+            <span style="font-size:18px;display:block;margin-bottom:4px">👤</span>
+            <strong>Worker</strong>
+            <span style="display:block;font-size:11px;opacity:0.7;margin-top:2px">I want to earn money</span>
+          </button>
+          <button type="button" class="role-btn" id="role-employer" onclick="selectRole('employer')">
+            <span style="font-size:18px;display:block;margin-bottom:4px">🏢</span>
+            <strong>Brand / Employer</strong>
+            <span style="display:block;font-size:11px;opacity:0.7;margin-top:2px">I want to post tasks</span>
+          </button>
+        </div>
+      </div>
+
       <div class="form-row">
         <div class="field">
           <div class="field-label">First name</div>
@@ -1116,58 +1153,38 @@
     if (!valid) return;
 
     btn.textContent = 'Creating account...';
-    btn.disabled = true;
+    btn.classList.add('loading');
 
     try {
-      // 1. Create auth account in Supabase
-      const { data, error } = await sb.auth.signUp({ email, password });
+      // 1. Create auth account
+      const { data, error } = await sb.auth.signUp({
+        email, password,
+        options: { emailRedirectTo: 'https://yoursite.com/cloutwork-auth.html' }
+      });
 
-      if (error) {
-        alert('Signup failed: ' + error.message);
-        return;
-      }
+      if (error) { alert(error.message); return; }
 
-      // 2. Save profile — works whether email confirmation is on or off
-      //    data.user is available immediately when confirmation is OFF
-      const userId = data.user ? data.user.id : data.session?.user?.id;
+      // 2. Save profile info to profiles table
+      await sb.from('profiles').insert({
+        id: data.user.id,
+        role: 'worker',
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        phone: document.getElementById('phone').value,
+        tiktok_handle: document.getElementById('tiktok').value,
+        state: document.getElementById('state').value
+      });
 
-      if (userId) {
-        const { error: profileError } = await sb.from('profiles').upsert({
-          id:            userId,
-          role:          'worker',
-          first_name:    firstName,
-          last_name:     lastName,
-          email,
-          phone,
-          tiktok_handle: document.getElementById('tiktok').value.trim(),
-          state,
-          status:        'active'
-        }, { onConflict: 'id' });
-
-        if (profileError) {
-          console.error('Profile error:', profileError.message);
-        }
-      }
-
-      // 3. If email confirmation is OFF, session exists immediately
-      //    → skip OTP screen and go straight to dashboard
-      if (data.session) {
-        localStorage.setItem('cw_name', firstName);
-        window.location.href = 'cloutwork-workers-dashboard.html';
-        return;
-      }
-
-      // 4. If email confirmation is ON, show the OTP/waiting screen
+      // 3. Show OTP screen (email confirmation)
       localStorage.setItem('cw_name', firstName);
       document.getElementById('otp-email').textContent = email;
       showStep('step-otp');
-
     } catch (err) {
-      console.error('Signup error:', err);
-      alert('Signup error: ' + (err.message || String(err)));
+      alert('Something went wrong. Please try again.');
     } finally {
       btn.textContent = 'Create my free account →';
-      btn.disabled = false;
+      btn.classList.remove('loading');
     }
   }
 
@@ -1182,36 +1199,28 @@
     if (!password) { showError('login-password', 'Enter your password'); return; }
 
     btn.textContent = 'Logging in...';
-    btn.disabled = true;
+    btn.classList.add('loading');
 
     try {
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
 
-      if (error) {
-        showError('login-email', 'Invalid email or password');
-        return;
-      }
+      if (error) { showError('login-email', 'Invalid email or password'); return; }
 
-      // Fetch their role — use maybeSingle() so null profile doesn't crash
-      const { data: profile } = await sb
+      const { data: profile, error: profileErr } = await sb
         .from('profiles')
         .select('role')
         .eq('id', data.user.id)
         .maybeSingle();
 
-      // If no profile row exists yet, create one and send to worker dashboard
-      if (!profile) {
+      if (profileErr || !profile) {
         await sb.from('profiles').upsert({
-          id:     data.user.id,
-          role:   'worker',
-          email:  data.user.email,
-          status: 'active'
+          id: data.user.id, role: 'worker',
+          email: data.user.email, status: 'active'
         }, { onConflict: 'id' });
         window.location.href = 'cloutwork-workers-dashboard.html';
         return;
       }
 
-      // Redirect based on role
       if (profile.role === 'worker')
         window.location.href = 'cloutwork-workers-dashboard.html';
       else if (profile.role === 'employer')
@@ -1220,13 +1229,11 @@
         window.location.href = 'cloutwork-admin.html';
       else
         window.location.href = 'cloutwork-workers-dashboard.html';
-
     } catch (err) {
-      console.error('Login error:', err);
-      alert('Login error: ' + (err.message || String(err)));
+      alert('Something went wrong. Please try again.');
     } finally {
       btn.textContent = 'Log in to CloutWork →';
-      btn.disabled = false;
+      btn.classList.remove('loading');
     }
   }
 
@@ -1247,11 +1254,11 @@
 
     const btn = document.querySelector('#step-otp .btn-submit');
     btn.textContent = 'Verifying...';
-    btn.disabled = true;
+    btn.classList.add('loading');
 
     setTimeout(() => {
       btn.textContent = 'Verify & continue →';
-      btn.disabled = false;
+      btn.classList.remove('loading');
       showStep('step-bank');
     }, 1000);
   }
@@ -1309,7 +1316,7 @@
   }
 
   function goToDashboard() {
-    window.location.href = 'cloutwork-workers-dashboard.html';
+    window.location.href = window._selectedRole === 'employer' ? 'Cloutwork-Employer-dashboard.html' : 'cloutwork-workers-dashboard.html';
   }
 
   // STEP NAVIGATION
@@ -1323,7 +1330,37 @@
     showStep(stepId);
   }
 
+  // ROLE SELECTION
+  window._selectedRole = 'worker'; // default
+
+  function selectRole(role) {
+    window._selectedRole = role;
+    document.getElementById('role-worker').classList.toggle('active', role === 'worker');
+    document.getElementById('role-employer').classList.toggle('active', role === 'employer');
+  }
+
+  // Auto-select employer role if coming from homepage "I'm a brand" button
+  const _urlRole = new URLSearchParams(window.location.search).get('role');
+  if (_urlRole === 'employer') selectRole('employer');
+
   // FORGOT PASSWORD
+  async function handleEmailConfirmation() {
+    const hash = window.location.hash;
+    if (!hash || !hash.includes('access_token')) return;
+    try {
+      const { data } = await sb.auth.getSession();
+      if (!data.session) return;
+      const user = data.session.user;
+      await sb.from('profiles').upsert({
+        id: user.id, role: 'worker',
+        email: user.email, status: 'active'
+      }, { onConflict: 'id' });
+      window.history.replaceState(null, '', window.location.pathname);
+      window.location.href = 'cloutwork-workers-dashboard.html';
+    } catch(e) { switchTabDirect('login'); }
+  }
+  handleEmailConfirmation();
+
   function showForgot() {
     const emailVal = document.getElementById('login-email').value;
     const email = prompt('Enter your email address to reset your password:', emailVal);
@@ -1331,38 +1368,6 @@
       alert('Password reset link sent to ' + email + '. Check your inbox.');
     }
   }
-
-  // Handle email confirmation link click
-  // Supabase puts tokens in the URL hash — detect and auto-login
-  async function handleConfirmationLink() {
-    const hash = window.location.hash;
-    if (!hash || !hash.includes('access_token')) return;
-
-    try {
-      const { data, error } = await sb.auth.getSession();
-      if (error || !data.session) return;
-
-      const user = data.session.user;
-
-      // Make sure profile exists
-      await sb.from('profiles').upsert({
-        id:     user.id,
-        role:   'worker',
-        email:  user.email,
-        status: 'active'
-      }, { onConflict: 'id' });
-
-      // Clean URL and redirect
-      window.history.replaceState(null, '', window.location.pathname);
-      window.location.href = 'cloutwork-workers-dashboard.html';
-
-    } catch (err) {
-      console.error('Confirmation error:', err);
-    }
-  }
-
-  // Run on page load to catch confirmation links
-  handleConfirmationLink();
 </script>
 
 </body>
