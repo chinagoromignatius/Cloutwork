@@ -9,7 +9,8 @@
 <script>
   const SUPABASE_URL = 'https://nyvljdxeeakatnnqiwjx.supabase.co'
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55dmxqZHhlZWFrYXRubnFpd2p4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NDMxODcsImV4cCI6MjA5MjUxOTE4N30.yRGcDuCXjf7wkrJSz1rPPwH3wQnRncjPfsf3yqHui_Q'
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  const { createClient } = window.supabase
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 </script>
 <style>
   :root {
@@ -1105,66 +1106,72 @@
     const terms     = document.getElementById('terms').checked;
 
     if (!firstName) { showError('firstName', 'Enter your first name'); valid = false; }
-    if (!lastName)  { showError('lastName',  'Enter your last name');  valid = false; }
+    if (!lastName) { showError('lastName', 'Enter your last name'); valid = false; }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError('email', 'Enter a valid email address'); valid = false; }
     if (!phone || !/^(0[7-9][0-1]\d{8}|(\+234)[7-9][0-1]\d{8})$/.test(phone.replace(/\s/g,''))) { showError('phone', 'Enter a valid Nigerian phone number (e.g. 08012345678)'); valid = false; }
-    if (!state)            { showError('state', 'Please select your state'); valid = false; }
+    if (!state) { showError('state', 'Please select your state'); valid = false; }
     if (password.length < 8) { showError('password', 'Password must be at least 8 characters'); valid = false; }
     if (!terms) { alert('Please agree to the Terms of Service to continue.'); valid = false; }
 
     if (!valid) return;
 
-    // Show loading state
     btn.textContent = 'Creating account...';
-    btn.disabled = true;
+    btn.classList.add('loading');
 
     try {
-      // 1. Create Supabase auth account
-      const { data, error } = await supabase.auth.signUp({
+      // 1. Create auth account
+      const { data, error } = await sb.auth.signUp({
         email,
         password,
         options: { emailRedirectTo: window.location.origin + '/Cloutwork-auth.html' }
       });
 
+      // Show real error if signup fails
       if (error) {
-        if (error.message.includes('already registered')) {
+        if (error.message.toLowerCase().includes('already registered')) {
           showError('email', 'This email is already registered. Try logging in.');
         } else {
-          alert(error.message);
+          alert('Signup failed: ' + error.message);
         }
         return;
       }
 
-      // 2. Save profile to profiles table
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id:             data.user.id,
-        role:           'worker',
-        first_name:     firstName,
-        last_name:      lastName,
-        email,
-        phone,
-        tiktok_handle:  document.getElementById('tiktok').value.trim(),
-        state,
-        status:         'active'
-      });
-
-      if (profileError) {
-        console.error('Profile error:', profileError);
-        // Don't block — auth worked, profile can be fixed later
+      // When email confirmation is ON in Supabase, data.user is null
+      // until the user clicks the confirmation link in their email
+      if (!data.user) {
+        localStorage.setItem('cw_name', firstName);
+        document.getElementById('otp-email').textContent = email;
+        showStep('step-otp');
+        return;
       }
 
-      // 3. Move to OTP verification step
+      // 2. Save profile — upsert prevents duplicate key errors
+      const { error: profileError } = await sb.from('profiles').upsert({
+        id:            data.user.id,
+        role:          'worker',
+        first_name:    firstName,
+        last_name:     lastName,
+        email,
+        phone,
+        tiktok_handle: document.getElementById('tiktok').value.trim(),
+        state,
+        status:        'active'
+      }, { onConflict: 'id' });
+
+      if (profileError) {
+        console.error('Profile error:', profileError.message);
+        // Don't block the user — auth worked, profile saves on next login
+      }
+
+      // 3. Move to email verification step
       localStorage.setItem('cw_name', firstName);
       document.getElementById('otp-email').textContent = email;
       showStep('step-otp');
-
     } catch (err) {
-      console.error('Signup error:', err);
-      alert('Something went wrong. Please check your connection and try again.');
+      alert('Error: ' + (err.message || String(err)));
     } finally {
-      // Always re-enable the button
       btn.textContent = 'Create my free account →';
-      btn.disabled = false;
+      btn.classList.remove('loading');
     }
   }
 
@@ -1179,23 +1186,18 @@
     if (!password) { showError('login-password', 'Enter your password'); return; }
 
     btn.textContent = 'Logging in...';
-    btn.disabled = true;
+    btn.classList.add('loading');
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
 
       if (error) { showError('login-email', 'Invalid email or password'); return; }
 
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile } = await sb
         .from('profiles')
         .select('role')
         .eq('id', data.user.id)
         .single();
-
-      // If profile missing, default to worker dashboard
-      if (profileError || !profile) {
-        window.location.href = 'cloutwork-workers-dashboard.html'; return;
-      }
 
       if (profile.role === 'worker')
         window.location.href = 'cloutwork-workers-dashboard.html';
@@ -1203,15 +1205,11 @@
         window.location.href = 'Cloutwork-Employer-dashboard.html';
       else if (profile.role === 'admin')
         window.location.href = 'cloutwork-admin.html';
-      else
-        window.location.href = 'cloutwork-workers-dashboard.html';
-
     } catch (err) {
-      console.error('Login error:', err);
-      alert('Something went wrong. Please check your connection and try again.');
+      alert('Error: ' + (err.message || String(err)));
     } finally {
       btn.textContent = 'Log in to CloutWork →';
-      btn.disabled = false;
+      btn.classList.remove('loading');
     }
   }
 
